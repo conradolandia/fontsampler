@@ -9,9 +9,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont as RLTTFont
-from reportlab.platypus import Paragraph
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_LEFT
+
 from PyPDF2 import PdfReader, PdfWriter
 
 SAMPLE_TEXT = "Sphinx of black quartz, judge my vow!"
