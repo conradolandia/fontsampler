@@ -7,13 +7,15 @@ version = "0.1.0"
 
 [tasks]
 build = "pyinstaller fontsampler.spec"
-build-debug = "pyinstaller --debug all fontsampler.spec"
-build-simple = "pyinstaller --onefile --name fontsampler fontsampler.py"
 build-clean = "pyinstaller --noconfirm --clean fontsampler.spec"
+build-debug = "pyinstaller --debug all fontsampler.spec"
+build-install = {depends_on = ["build-clean"], cmd = "bash -c 'cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"}
+build-simple = "pyinstaller --onefile --name fontsampler fontsampler.py"
+install = {cmd = "bash -c 'cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"}
 
 [dependencies]
 fonttools = ">=4.59.0,<5"
-reportlab = ">=4.4.1,<5"
 pillow = ">=11.3.0,<12"
-pypdf2 = ">=3.0.1,<4"
 pyinstaller = ">=6.8.0,<7"
+pypdf2 = ">=3.0.1,<4"
+reportlab = ">=4.4.1,<5"

@@ -25,19 +25,19 @@ def wrap_text(text, font_name, font_size, max_width):
     """Wrap text to fit within max_width using the specified font."""
     if not text:
         return [""]
-    
+
     # Create a temporary canvas to measure text
     temp_canvas = canvas.Canvas(io.BytesIO())
     temp_canvas.setFont(font_name, font_size)
-    
+
     words = text.split()
     lines = []
     current_line = ""
-    
+
     for word in words:
         test_line = current_line + " " + word if current_line else word
         test_width = temp_canvas.stringWidth(test_line, font_name, font_size)
-        
+
         if test_width <= max_width:
             current_line = test_line
         else:
@@ -47,24 +47,26 @@ def wrap_text(text, font_name, font_size, max_width):
             else:
                 # Word is too long, break it
                 lines.append(word)
-    
+
     if current_line:
         lines.append(current_line)
-    
+
     return lines if lines else [""]
 
 
-def draw_wrapped_text(canvas, text, x, y, font_name, font_size, max_width, line_height=None):
+def draw_wrapped_text(
+    canvas, text, x, y, font_name, font_size, max_width, line_height=None
+):
     """Draw text with automatic wrapping."""
     if line_height is None:
         line_height = font_size + 2
-    
+
     lines = wrap_text(text, font_name, font_size, max_width)
     for line in lines:
         canvas.setFont(font_name, font_size)
         canvas.drawString(x, y, line)
         y -= line_height
-    
+
     return y  # Return the new y position
 
 
@@ -106,11 +108,17 @@ def find_fonts(root):
 
 
 def register_font_for_pdf(font_path):
-    temp_name = "F" + uuid.uuid4().hex
-    temp_copy = os.path.join(mkdtemp(), os.path.basename(font_path))
-    copyfile(font_path, temp_copy)
-    pdfmetrics.registerFont(RLTTFont(temp_name, temp_copy))
-    return temp_name
+    """Register a font for PDF generation, return None if incompatible."""
+    try:
+        temp_name = "F" + uuid.uuid4().hex
+        temp_copy = os.path.join(mkdtemp(), os.path.basename(font_path))
+        copyfile(font_path, temp_copy)
+        pdfmetrics.registerFont(RLTTFont(temp_name, temp_copy))
+        return temp_name
+    except Exception as e:
+        # Log the error for debugging (optional)
+        # print(f"Error registering font {os.path.basename(font_path)}: {e}")
+        return None
 
 
 def create_sample_pages(font_infos):
@@ -121,9 +129,11 @@ def create_sample_pages(font_infos):
     toc_entries = []
 
     for i, info in enumerate(font_infos):
-        font_name = register_font_for_pdf(info["path"])
-        page_num = i + 2  # +1 for zero-based index, +1 because TOC is on page 1
+        font_name = info.get("_registered_name")
+        if not font_name:
+            continue
 
+        page_num = len(toc_entries) + 2
         toc_entries.append((info["name"] or info["file"], page_num))
 
         # Header with text wrapping
@@ -134,6 +144,7 @@ def create_sample_pages(font_infos):
         y = height - 35 * mm
         max_width = width - 40 * mm  # Leave margins
         
+        c.setFont("Helvetica", 12)
         y = draw_wrapped_text(c, f"Font Name: {info['name']}", 20 * mm, y, "Helvetica", 9, max_width)
         y = draw_wrapped_text(c, f"Family: {info['family']}", 20 * mm, y, "Helvetica", 9, max_width)
         y = draw_wrapped_text(c, f"Version: {info['version']}", 20 * mm, y, "Helvetica", 9, max_width)
@@ -166,12 +177,12 @@ def create_toc_page(toc_entries):
     y = height - 45 * mm
     c.setFont("Helvetica", 12)
     max_name_width = width - 80 * mm  # Leave space for page number
-    
+
     for name, page in toc_entries:
         if y < 20 * mm:
             c.showPage()
             y = height - 30 * mm
-        
+
         # Wrap long font names
         lines = wrap_text(name, "Helvetica", 12, max_name_width)
         for line in lines:
@@ -203,14 +214,37 @@ def merge_pdfs(toc_pdf, content_pdf, output):
 
 
 def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
-    font_infos = [extract_font_info(p) for p in font_paths]
-    font_infos = [f for f in font_infos if f]
+    raw_infos = [extract_font_info(p) for p in font_paths]
+    raw_infos = [f for f in raw_infos if f]
 
-    content_pdf, toc_entries = create_sample_pages(font_infos)
+    valid_infos = []
+    rejected = []
+
+    print(f"→ Total fuentes encontradas: {len(raw_infos)}")
+    for info in raw_infos:
+        font_name = register_font_for_pdf(info["path"])
+        if font_name:
+            info["_registered_name"] = font_name
+            valid_infos.append(info)
+        else:
+            rejected.append(info["file"])
+
+    if not valid_infos:
+        print("⛔ No se encontró ninguna fuente compatible para generar el PDF.")
+        return
+
+    content_pdf, toc_entries = create_sample_pages(valid_infos)
     toc_pdf = create_toc_page(toc_entries)
-
     merge_pdfs(toc_pdf, content_pdf, output)
-    print(f"PDF generado: {output}")
+
+    print(f"\n✅ PDF generado: {output}")
+    print(f"→ Fuentes incluidas: {len(valid_infos)}")
+    print(f"→ Fuentes incompatibles: {len(rejected)}")
+
+    if rejected:
+        print("🗒️  Fuentes descartadas:")
+        for f in rejected:
+            print(f"  - {f}")
 
 
 if __name__ == "__main__":
