@@ -9,7 +9,7 @@ version = "0.1.0"
 build = "pyinstaller fontsampler.spec"
 build-clean = "pyinstaller --noconfirm --clean fontsampler.spec"
 build-debug = "pyinstaller --debug all fontsampler.spec"
-build-install = {depends_on = ["build-clean"], cmd = "bash -c 'cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"}
+build-install = {depends-on = ["build-simple"], cmd = "bash -c 'cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"}
 build-simple = "pyinstaller --onefile --name fontsampler fontsampler.py"
 install = {cmd = "bash -c 'cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"}
 

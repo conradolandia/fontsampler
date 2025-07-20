@@ -137,7 +137,7 @@ def create_sample_pages(font_infos):
         toc_entries.append((info["name"] or info["file"], page_num))
 
         # Header with text wrapping
-        c.setFont("Helvetica-Bold", 32)
+        c.setFont("Helvetica-Bold", 24)
         c.drawString(20 * mm, height - 25 * mm, f"{info['file']}")
         
         # Font metadata with wrapping
@@ -172,7 +172,7 @@ def create_toc_page(toc_entries):
     width, height = A4
 
     c.setFont("Helvetica-Bold", 18)
-    c.drawString(20 * mm, height - 30 * mm, "Tabla de Contenido")
+    c.drawString(20 * mm, height - 30 * mm, "Table of Contents")
 
     y = height - 45 * mm
     c.setFont("Helvetica", 12)
@@ -220,7 +220,7 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
     valid_infos = []
     rejected = []
 
-    print(f"→ Total fuentes encontradas: {len(raw_infos)}")
+    print(f"→ Total fonts found: {len(raw_infos)}")
     for info in raw_infos:
         font_name = register_font_for_pdf(info["path"])
         if font_name:
@@ -229,30 +229,72 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         else:
             rejected.append(info["file"])
 
+    # Sort fonts alphabetically by filename
+    valid_infos.sort(key=lambda x: x["file"].lower())
+
     if not valid_infos:
-        print("⛔ No se encontró ninguna fuente compatible para generar el PDF.")
+        print("⛔ No compatible fonts found to generate PDF.")
         return
 
     content_pdf, toc_entries = create_sample_pages(valid_infos)
     toc_pdf = create_toc_page(toc_entries)
     merge_pdfs(toc_pdf, content_pdf, output)
 
-    print(f"\n✅ PDF generado: {output}")
-    print(f"→ Fuentes incluidas: {len(valid_infos)}")
-    print(f"→ Fuentes incompatibles: {len(rejected)}")
+    print(f"\n✅ PDF generated: {output}")
+    print(f"→ Fonts included: {len(valid_infos)}")
+    print(f"→ Incompatible fonts: {len(rejected)}")
 
     if rejected:
-        print("🗒️  Fuentes descartadas:")
-        for f in rejected:
+        print("🗒️  Rejected fonts:")
+        for f in sorted(rejected):
             print(f"  - {f}")
 
 
 if __name__ == "__main__":
     import sys
+    import argparse
 
-    if len(sys.argv) < 2:
-        print("Uso: python generate_font_samples.py <directorio>")
-        exit(1)
-    root_dir = sys.argv[1]
-    fonts = find_fonts(root_dir)
-    generate_pdf_with_toc(fonts)
+    parser = argparse.ArgumentParser(
+        description="Generate PDF samples of fonts found in a directory",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  fontsampler /usr/share/fonts          # Sample all fonts in system directory
+  fontsampler ~/fonts -o my_samples.pdf # Custom output filename
+  fontsampler . --help                   # Show this help message
+        """
+    )
+    
+    parser.add_argument(
+        "directory",
+        help="Directory containing font files (.ttf, .otf)"
+    )
+    
+    parser.add_argument(
+        "-o", "--output",
+        default="font_samples.pdf",
+        help="Output PDF filename (default: font_samples.pdf)"
+    )
+    
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Show detailed information about font processing"
+    )
+    
+    args = parser.parse_args()
+    
+    if not os.path.exists(args.directory):
+        print(f"Error: Directory '{args.directory}' does not exist")
+        sys.exit(1)
+    
+    if not os.path.isdir(args.directory):
+        print(f"Error: '{args.directory}' is not a directory")
+        sys.exit(1)
+    
+    fonts = find_fonts(args.directory)
+    if not fonts:
+        print(f"No font files (.ttf, .otf) found in '{args.directory}'")
+        sys.exit(1)
+    
+    generate_pdf_with_toc(fonts, args.output)

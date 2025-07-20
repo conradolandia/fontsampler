@@ -1,42 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
 
 a = Analysis(
     ['fontsampler.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[
-        'fontTools.ttLib',
-        'reportlab.pdfgen',
-        'reportlab.lib.pagesizes',
-        'reportlab.lib.units',
-        'reportlab.pdfbase',
-        'reportlab.pdfbase.ttfonts',
-        'PyPDF2',
-        'PIL',
-        'PIL._imaging',
-        'PIL._imagingtk',
-        'PIL._tkinter_finder',
-    ],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['matplotlib', 'numpy'],  # Exclude unused heavy dependencies
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
+    excludes=[],
     noarchive=False,
+    optimize=0,
 )
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
     [],
     name='fontsampler',
@@ -52,4 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-) 
+)
