@@ -2,4 +2,8 @@
 .pixi
 __pycache__
 .venv
+# build
+dist
+build
+# output
 *.pdf

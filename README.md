@@ -42,6 +42,34 @@ pixi run python fontsampler.py /usr/share/fonts
 
 This will scan the specified directory for fonts and generate a `font_samples.pdf` file in the current directory.
 
+## Building Standalone Binary
+
+To create a standalone executable:
+
+```bash
+# Install dependencies first
+pixi install
+
+# Build the binary
+pixi run build
+```
+
+This will create a `fontsampler` executable in the `dist/` directory.
+
+### Build Options
+
+- `pixi run build` - Standard build using spec file
+- `pixi run build-debug` - Build with debug information
+- `pixi run build-simple` - Simple build without spec file
+- `pixi run build-clean` - Clean build (removes previous build artifacts)
+
+### Build Warnings
+
+You may see warnings about `__glibc`, `__unix`, or `ldd` during the build process. These are normal and safe to ignore:
+- They're related to system libraries that will be available on target systems
+- The binary will still work correctly
+- These warnings don't affect the final executable
+
 ## Output
 
 The generated PDF contains:
