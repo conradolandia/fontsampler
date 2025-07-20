@@ -116,8 +116,8 @@ def register_font_for_pdf(font_path):
         pdfmetrics.registerFont(RLTTFont(temp_name, temp_copy))
         return temp_name
     except Exception as e:
-        # Log the error for debugging (optional)
-        # print(f"Error registering font {os.path.basename(font_path)}: {e}")
+        # Log the error for debugging
+        print(f"Error registering font {os.path.basename(font_path)}: {e}")
         return None
 
 
