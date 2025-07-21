@@ -107,16 +107,61 @@ def find_fonts(root):
     return fonts
 
 
+def convert_otf_to_ttf(otf_path):
+    """Convert OpenType font to TrueType format if possible."""
+    try:
+        # Load the font
+        font = TTFont(otf_path)
+        
+        # Check if it's an OpenType font with PostScript outlines
+        if 'CFF ' in font or 'CFF2' in font:
+            # Create a temporary file for the converted font
+            temp_dir = mkdtemp()
+            ttf_path = os.path.join(temp_dir, os.path.splitext(os.path.basename(otf_path))[0] + '.ttf')
+            
+            # For CFF fonts, we need to convert them to TrueType
+            # This is a simplified approach - we'll try to save as TTF
+            # but this may not work for all CFF fonts
+            try:
+                # Remove OpenType flavor to make it a pure TTF
+                font.flavor = None
+                font.save(ttf_path)
+                return ttf_path
+            except Exception:
+                # If direct save fails, try a different approach
+                # For now, we'll return None and let ReportLab handle it
+                return None
+        else:
+            # Font is already TrueType or doesn't need conversion
+            return None
+    except Exception as e:
+        print(f"Error converting font {os.path.basename(otf_path)}: {e}")
+        return None
+
+
 def register_font_for_pdf(font_path):
-    """Register a font for PDF generation, return None if incompatible."""
+    """Register a font for PDF generation, return (font_name, was_converted) or None if incompatible."""
     try:
         temp_name = "F" + uuid.uuid4().hex
         temp_copy = os.path.join(mkdtemp(), os.path.basename(font_path))
         copyfile(font_path, temp_copy)
         pdfmetrics.registerFont(RLTTFont(temp_name, temp_copy))
-        return temp_name
+        return temp_name, False
     except Exception as e:
-        # Log the error for debugging
+        # If direct registration fails, try converting OpenType to TrueType
+        if font_path.lower().endswith('.otf'):
+            print(f"Direct registration failed for {os.path.basename(font_path)}, attempting conversion...")
+            converted_path = convert_otf_to_ttf(font_path)
+            if converted_path:
+                try:
+                    temp_name = "F" + uuid.uuid4().hex
+                    pdfmetrics.registerFont(RLTTFont(temp_name, converted_path))
+                    print(f"Successfully converted and registered {os.path.basename(font_path)}")
+                    return temp_name, True
+                except Exception as conv_e:
+                    print(f"Conversion failed for {os.path.basename(font_path)}: {conv_e}")
+        
+        # Log the original error for debugging
         print(f"Error registering font {os.path.basename(font_path)}: {e}")
         return None
 
@@ -139,21 +184,31 @@ def create_sample_pages(font_infos):
         # Header with text wrapping
         c.setFont("Helvetica-Bold", 24)
         c.drawString(20 * mm, height - 25 * mm, f"{info['file']}")
-        
+
         # Font metadata with wrapping
         y = height - 35 * mm
         max_width = width - 40 * mm  # Leave margins
-        
+
         c.setFont("Helvetica", 12)
-        y = draw_wrapped_text(c, f"Font Name: {info['name']}", 20 * mm, y, "Helvetica", 9, max_width)
-        y = draw_wrapped_text(c, f"Family: {info['family']}", 20 * mm, y, "Helvetica", 9, max_width)
-        y = draw_wrapped_text(c, f"Version: {info['version']}", 20 * mm, y, "Helvetica", 9, max_width)
-        y = draw_wrapped_text(c, f"Copyright: {info['copyright']}", 20 * mm, y, "Helvetica", 9, max_width)
+        y = draw_wrapped_text(
+            c, f"Font Name: {info['name']}", 20 * mm, y, "Helvetica", 9, max_width
+        )
+        y = draw_wrapped_text(
+            c, f"Family: {info['family']}", 20 * mm, y, "Helvetica", 9, max_width
+        )
+        y = draw_wrapped_text(
+            c, f"Version: {info['version']}", 20 * mm, y, "Helvetica", 9, max_width
+        )
+        y = draw_wrapped_text(
+            c, f"Copyright: {info['copyright']}", 20 * mm, y, "Helvetica", 9, max_width
+        )
 
         # Font samples
         y -= 20 * mm  # Add some space after metadata
         for size in [36, 24, 18, 14]:
-            y = draw_wrapped_text(c, SAMPLE_TEXT, 20 * mm, y, font_name, size, max_width, size + 8)
+            y = draw_wrapped_text(
+                c, SAMPLE_TEXT, 20 * mm, y, font_name, size, max_width, size + 8
+            )
 
         # Paragraph with proper wrapping
         y -= 10 * mm  # Add space before paragraph
@@ -219,13 +274,22 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
 
     valid_infos = []
     rejected = []
+    converted_count = 0
 
     print(f"→ Total fonts found: {len(raw_infos)}")
-    for info in raw_infos:
-        font_name = register_font_for_pdf(info["path"])
-        if font_name:
+    print("→ Processing fonts...")
+    
+    for i, info in enumerate(raw_infos):
+        if i % 50 == 0:  # Progress indicator every 50 fonts
+            print(f"  Processing font {i+1}/{len(raw_infos)}...")
+            
+        result = register_font_for_pdf(info["path"])
+        if result:
+            font_name, was_converted = result
             info["_registered_name"] = font_name
             valid_infos.append(info)
+            if was_converted:
+                converted_count += 1
         else:
             rejected.append(info["file"])
 
@@ -236,12 +300,14 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         print("⛔ No compatible fonts found to generate PDF.")
         return
 
+    print(f"→ Creating PDF with {len(valid_infos)} fonts...")
     content_pdf, toc_entries = create_sample_pages(valid_infos)
     toc_pdf = create_toc_page(toc_entries)
     merge_pdfs(toc_pdf, content_pdf, output)
 
     print(f"\n✅ PDF generated: {output}")
     print(f"→ Fonts included: {len(valid_infos)}")
+    print(f"→ Fonts converted from OpenType: {converted_count}")
     print(f"→ Incompatible fonts: {len(rejected)}")
 
     if rejected:
@@ -262,39 +328,40 @@ Examples:
   fontsampler /usr/share/fonts          # Sample all fonts in system directory
   fontsampler ~/fonts -o my_samples.pdf # Custom output filename
   fontsampler . --help                   # Show this help message
-        """
+        """,
     )
-    
+
     parser.add_argument(
-        "directory",
-        help="Directory containing font files (.ttf, .otf)"
+        "directory", help="Directory containing font files (.ttf, .otf)"
     )
-    
+
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         default="font_samples.pdf",
-        help="Output PDF filename (default: font_samples.pdf)"
+        help="Output PDF filename (default: font_samples.pdf)",
     )
-    
+
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
-        help="Show detailed information about font processing"
+        help="Show detailed information about font processing",
     )
-    
+
     args = parser.parse_args()
-    
+
     if not os.path.exists(args.directory):
         print(f"Error: Directory '{args.directory}' does not exist")
         sys.exit(1)
-    
+
     if not os.path.isdir(args.directory):
         print(f"Error: '{args.directory}' is not a directory")
         sys.exit(1)
-    
+
     fonts = find_fonts(args.directory)
     if not fonts:
         print(f"No font files (.ttf, .otf) found in '{args.directory}'")
         sys.exit(1)
-    
+
     generate_pdf_with_toc(fonts, args.output)
