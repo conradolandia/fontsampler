@@ -16,6 +16,26 @@ A Python script that generates PDF samples of fonts found in a directory. The sc
 
 - [Pixi](https://pixi.sh/) for dependency management
 - Python 3.6+
+- **System Libraries**: Cairo graphics library (required by WeasyPrint for PDF generation)
+
+### System Dependencies
+
+On most Linux distributions, Cairo is included by default. If you encounter issues, you may need to install it:
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libcairo2-dev
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S cairo
+```
+
+**Fedora/RHEL:**
+```bash
+sudo dnf install cairo-devel
+```
 
 ## Installation
 
@@ -61,17 +81,9 @@ This will create a `fontsampler` executable in the `dist/` directory.
 
 - `pixi run build` - Standard build using spec file
 - `pixi run build-debug` - Build with debug information
-- `pixi run build-simple` - Simple build without spec file
 - `pixi run build-clean` - Clean build (removes previous build artifacts)
 - `pixi run install` - Copy the built binary to `$HOME/.local/bin` (overwrites existing)
 - `pixi run build-install` - Build and install the binary to `$HOME/.local/bin` (overwrites existing)
-
-### Build Warnings
-
-You may see warnings about `__glibc`, `__unix`, or `ldd` during the build process. These are normal and safe to ignore:
-- They're related to system libraries that will be available on target systems
-- The binary will still work correctly
-- These warnings don't affect the final executable
 
 ## Output
 
@@ -92,11 +104,12 @@ The script uses the pangram "Sphinx of black quartz, judge my vow!" for font sam
 
 ## Font Support
 
-This version uses WeasyPrint with Pango for font rendering, providing:
+This version uses WeasyPrint with Cairo and Pango for font rendering, providing:
 - **OpenType support**: Direct handling of `.otf` files
 - **PostScript font support**: Handles CFF and CFF2 outlines
 - **TrueType support**: Full support for `.ttf` files
 - **Font feature support**: Automatic detection of bold, italic, and other variants
+- **PDF generation**: High-quality PDF output using Cairo graphics library
 
 ## License
 

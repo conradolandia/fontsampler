@@ -1,12 +1,37 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import sys
+from PyInstaller.utils.hooks import collect_dynamic_libs
 
+# Collect Cairo libraries
+cairo_libs = collect_dynamic_libs('cairocffi')
 
 a = Analysis(
     ['fontsampler.py'],
     pathex=[],
-    binaries=[],
+    binaries=cairo_libs,
     datas=[],
-    hiddenimports=[],
+    hiddenimports=[
+        'fontTools.ttLib',
+        'fontTools.ttLib.ttFont',
+        'fontTools.ttLib.tables',
+        'fontTools.ttLib.tables._n_a_m_e',
+        'weasyprint',
+        'weasyprint.text.fonts',
+        'weasyprint.css',
+        'weasyprint.css.targets',
+        'weasyprint.document',
+        'weasyprint.html',
+        'weasyprint.layout',
+        'weasyprint.pdf',
+        'cairocffi',
+        'cairocffi.pixbuf',
+        'PIL',
+        'PIL._imagingtk',
+        'PIL._tkinter_finder',
+        'tkinter',
+        'tkinter.ttk',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

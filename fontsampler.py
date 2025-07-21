@@ -238,12 +238,12 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
     valid_infos = []
     rejected = []
 
-    print(f"→ Total fonts found: {len(raw_infos)}")
-    print("→ Processing fonts...")
+    print(f"🔍 Total fonts found: {len(raw_infos)}")
+    print("⚙️  Processing fonts...")
 
     for i, info in enumerate(raw_infos):
         if i % 50 == 0:
-            print(f"  Processing font {i + 1}/{len(raw_infos)}...")
+            print(f"  📝 Processing font {i + 1}/{len(raw_infos)}...")
 
         result = register_font_for_weasyprint(info["path"])
         if result:
@@ -256,10 +256,10 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
     valid_infos.sort(key=lambda x: x["file"].lower())
 
     if not valid_infos:
-        print("⛔ No compatible fonts found to generate PDF.")
+        print("❌ No compatible fonts found to generate PDF.")
         return
 
-    print(f"→ Creating PDF with {len(valid_infos)} fonts...")
+    print(f"📄 Creating PDF with {len(valid_infos)} fonts...")
 
     # Create HTML content
     html_content = create_html_content(valid_infos)
@@ -277,13 +277,13 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
     html.write_pdf(output, stylesheets=[css], font_config=font_config)
 
     print(f"\n✅ PDF generated: {output}")
-    print(f"→ Fonts included: {len(valid_infos)}")
-    print(f"→ Incompatible fonts: {len(rejected)}")
+    print(f"📊 Fonts included: {len(valid_infos)}")
+    print(f"⚠️  Incompatible fonts: {len(rejected)}")
 
     if rejected:
-        print("🗒️  Rejected fonts:")
+        print("📋 Rejected fonts:")
         for f in sorted(rejected):
-            print(f"  - {f}")
+            print(f"  ❌ {f}")
 
 
 if __name__ == "__main__":
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Generate PDF samples of fonts found in a directory",
+        description="🎨 Generate PDF samples of fonts found in a directory",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -322,16 +322,16 @@ Examples:
     args = parser.parse_args()
 
     if not os.path.exists(args.directory):
-        print(f"Error: Directory '{args.directory}' does not exist")
+        print(f"❌ Error: Directory '{args.directory}' does not exist")
         sys.exit(1)
 
     if not os.path.isdir(args.directory):
-        print(f"Error: '{args.directory}' is not a directory")
+        print(f"❌ Error: '{args.directory}' is not a directory")
         sys.exit(1)
 
     fonts = find_fonts(args.directory)
     if not fonts:
-        print(f"No font files (.ttf, .otf) found in '{args.directory}'")
+        print(f"🔍 No font files (.ttf, .otf) found in '{args.directory}'")
         sys.exit(1)
 
     generate_pdf_with_toc(fonts, args.output)
