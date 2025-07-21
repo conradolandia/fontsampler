@@ -6,10 +6,21 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [tasks]
+# Standard build - use for normal development
 build = "pyinstaller fontsampler.spec"
+
+# Clean build - removes PyInstaller cache and temporary files, use when having build issues
 build-clean = "pyinstaller --noconfirm --clean fontsampler.spec"
+
+# Debug build - includes debug information, use for troubleshooting
 build-debug = "pyinstaller --debug all fontsampler.spec"
+
+# Manual cleanup - removes output directories only
 clean = "rm -rf dist/ build/"
+
+# Full cleanup - removes output directories and PyInstaller cache
+clean-all = "rm -rf dist/ build/ .pyinstaller/"
+
 check-binary = "test -f dist/fontsampler && echo 'Binary found' || echo 'No binary found'"
 copy-binary = "bash -c 'echo \"Copying binary to $HOME/.local/bin/fontsampler\"; cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"
 install-interactive = {cmd = "bash -c 'echo \"No binary found. Choose build type:\"; echo \"1) Standard build (pixi run build)\"; echo \"2) Clean build (pixi run build-clean)\"; echo \"3) Cancel\"; read -p \"Enter choice (1-3): \" choice; case $choice in 1) pixi run build;; 2) pixi run build-clean;; 3) echo \"Installation cancelled\"; exit 0;; *) echo \"Invalid choice\"; exit 1;; esac'"}
@@ -22,3 +33,4 @@ pyinstaller = ">=6.8.0,<7"
 weasyprint = ">=62.0,<63"
 pygobject = ">=3.48.0,<4"
 cairocffi = ">=1.6.0,<2"
+rich = ">=13.0,<14"

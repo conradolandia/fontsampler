@@ -1,8 +1,21 @@
 import os
 import uuid
+import time
+import threading
 from fontTools.ttLib import TTFont
 from weasyprint import HTML, CSS
 from weasyprint.text.fonts import FontConfiguration
+import warnings
+import sys
+from io import StringIO
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+from rich.panel import Panel
+from rich.text import Text
+from rich import print as rprint
+
+# Initialize Rich console
+console = Console()
 
 SAMPLE_TEXT = "Sphinx of black quartz, judge my vow!"
 PARAGRAPH = (
@@ -16,11 +29,6 @@ PARAGRAPH = (
 def extract_font_info(path):
     """Extract font metadata using fontTools."""
     try:
-        # Suppress fontTools warnings during initial parsing
-        import warnings
-        import sys
-        from io import StringIO
-        
         # Capture and suppress warnings during font parsing
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -30,7 +38,7 @@ def extract_font_info(path):
             captured_output = StringIO()
             sys.stdout = captured_output
             sys.stderr = captured_output
-            
+
             try:
                 # Try to open the font with more lenient parsing
                 font = TTFont(path, fontNumber=0, lazy=True)
@@ -41,7 +49,7 @@ def extract_font_info(path):
 
         # Validate that the font has required tables
         if "name" not in font:
-            print(f"  ⚠️  Font {os.path.basename(path)} missing name table")
+            console.print(f"  [bold yellow]⚠️[/bold yellow] Font [yellow]{os.path.basename(path)}[/yellow] missing name table")
             return None
 
         name = ""
@@ -60,7 +68,7 @@ def extract_font_info(path):
                 if record.nameID == 0 and not copyright:
                     copyright = record.toStr()
         except Exception as e:
-            print(f"  ⚠️  Error reading name table for {os.path.basename(path)}: {e}")
+            console.print(f"  [bold yellow]⚠️[/bold yellow] Error reading name table for [yellow]{os.path.basename(path)}[/yellow]: {e}")
             # Continue with empty values rather than failing completely
 
         return {
@@ -72,17 +80,40 @@ def extract_font_info(path):
             "copyright": copyright,
         }
     except Exception as e:
-        print(f"  ❌ Failed to parse font {os.path.basename(path)}: {e}")
+        console.print(f"  [bold red]❌[/bold red] Failed to parse font [red]{os.path.basename(path)}[/red]: {e}")
         return None
 
 
 def find_fonts(root):
     """Find all font files in directory tree."""
     fonts = []
-    for dirpath, _, filenames in os.walk(root):
-        for f in filenames:
-            if f.lower().endswith((".ttf", ".otf")):
-                fonts.append(os.path.join(dirpath, f))
+    dir_count = 0
+    font_count = 0
+
+    console.print(f"[bold blue]🔍[/bold blue] Scanning directory: [cyan]{root}[/cyan]")
+
+    # First pass to count total directories for progress bar
+    total_dirs = sum(1 for _ in os.walk(root))
+    
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Scanning directories...", total=total_dirs)
+        
+        for dirpath, _, filenames in os.walk(root):
+            dir_count += 1
+            progress.update(task, advance=1)
+            
+            for f in filenames:
+                if f.lower().endswith((".ttf", ".otf")):
+                    font_count += 1
+                    fonts.append(os.path.join(dirpath, f))
+
+    console.print(f"[bold green]✅[/bold green] Directory scan complete: [cyan]{dir_count}[/cyan] directories, [cyan]{font_count}[/cyan] fonts found")
     return fonts
 
 
@@ -120,7 +151,7 @@ def validate_font_with_weasyprint(font_path, font_family):
         import warnings
         import sys
         from io import StringIO
-        
+
         # Suppress warnings during PDF generation test
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -130,9 +161,11 @@ def validate_font_with_weasyprint(font_path, font_family):
             captured_output = StringIO()
             sys.stdout = captured_output
             sys.stderr = captured_output
-            
+
             try:
-                html.write_pdf(target=BytesIO(), stylesheets=[], font_config=font_config)
+                html.write_pdf(
+                    target=BytesIO(), stylesheets=[], font_config=font_config
+                )
             finally:
                 sys.stdout = old_stdout
                 sys.stderr = old_stderr
@@ -152,7 +185,7 @@ def register_font_for_weasyprint(font_path):
     try:
         # Validate the font file exists and is readable
         if not os.path.exists(font_path) or not os.access(font_path, os.R_OK):
-            print(f"  ⚠️  Font file not accessible: {os.path.basename(font_path)}")
+            console.print(f"  [bold yellow]⚠️[/bold yellow] Font file not accessible: [yellow]{os.path.basename(font_path)}[/yellow]")
             return None
 
         # WeasyPrint can handle fonts directly via CSS @font-face
@@ -160,7 +193,7 @@ def register_font_for_weasyprint(font_path):
         font_family = f"font_{uuid.uuid4().hex[:8]}"
         return font_family
     except Exception as e:
-        print(f"  ❌ Error registering font {os.path.basename(font_path)}: {e}")
+        console.print(f"  [bold red]❌[/bold red] Error registering font [red]{os.path.basename(font_path)}[/red]: {e}")
         return None
 
 
@@ -354,48 +387,59 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
     rejected = []
     validation_errors = {}
 
-    print(f"🔍 Total fonts found: {len(raw_infos)}")
-    print("⚙️  Processing fonts...")
+    console.print(f"[bold blue]🔍[/bold blue] Total fonts found: [cyan]{len(raw_infos)}[/cyan]")
+    console.print("[bold yellow]⚙️[/bold yellow] Processing fonts...")
 
-    for i, info in enumerate(raw_infos):
-        if i % 50 == 0:
-            print(f"  📝 Processing font {i + 1}/{len(raw_infos)}...")
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Processing fonts...", total=len(raw_infos))
+        
+        for i, info in enumerate(raw_infos):
+            progress.update(task, description=f"[cyan]Processing {info['file']}...")
+            
+            # Register font and get family name
+            font_family = register_font_for_weasyprint(info["path"])
+            if not font_family:
+                rejected.append(info["file"])
+                validation_errors[info["file"]] = "Failed to register font"
+                progress.advance(task)
+                continue
 
-        # Register font and get family name
-        font_family = register_font_for_weasyprint(info["path"])
-        if not font_family:
-            rejected.append(info["file"])
-            validation_errors[info["file"]] = "Failed to register font"
-            continue
-
-        # Validate font with WeasyPrint test
-        validation_result = validate_font_with_weasyprint(info["path"], font_family)
-        if validation_result is True:
-            info["_registered_name"] = font_family
-            valid_infos.append(info)
-        else:
-            rejected.append(info["file"])
-            error_msg = (
-                validation_result[1]
-                if isinstance(validation_result, tuple)
-                else str(validation_result)
-            )
-            validation_errors[info["file"]] = error_msg
-            print(f"  ❌ {info['file']}: {error_msg}")
+            # Validate font with WeasyPrint test
+            validation_result = validate_font_with_weasyprint(info["path"], font_family)
+            if validation_result is True:
+                info["_registered_name"] = font_family
+                valid_infos.append(info)
+            else:
+                rejected.append(info["file"])
+                error_msg = (
+                    validation_result[1]
+                    if isinstance(validation_result, tuple)
+                    else str(validation_result)
+                )
+                validation_errors[info["file"]] = error_msg
+                console.print(f"  [bold red]❌[/bold red] [red]{info['file']}[/red]: {error_msg}")
+            
+            progress.advance(task)
 
     # Sort fonts alphabetically
     valid_infos.sort(key=lambda x: x["file"].lower())
 
     if not valid_infos:
-        print("❌ No compatible fonts found to generate PDF.")
+        console.print("[bold red]❌[/bold red] No compatible fonts found to generate PDF.")
         if rejected:
-            print("\n📋 Problematic fonts and their issues:")
+            console.print("\n[bold yellow]📋[/bold yellow] Problematic fonts and their issues:")
             for font_file in sorted(rejected):
                 error = validation_errors.get(font_file, "Unknown error")
-                print(f"  ❌ {font_file}: {error}")
+                console.print(f"  [red]❌[/red] [red]{font_file}[/red]: {error}")
         return
 
-    print(f"📄 Creating PDF with {len(valid_infos)} fonts...")
+    console.print(f"[bold green]📄[/bold green] Creating PDF with [cyan]{len(valid_infos)}[/cyan] fonts...")
 
     # Create HTML content
     html_content = create_html_content(valid_infos)
@@ -411,43 +455,56 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         html = HTML(string=html_content)
         css = CSS(string=css_content, font_config=font_config)
 
-        # Suppress warnings during final PDF generation
-        import warnings
-        import sys
-        from io import StringIO
-        
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # Also suppress stdout and stderr temporarily
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            captured_output = StringIO()
-            sys.stdout = captured_output
-            sys.stderr = captured_output
-            
-            try:
-                html.write_pdf(output, stylesheets=[css], font_config=font_config)
-            finally:
-                sys.stdout = old_stdout
-                sys.stderr = old_stderr
+        # Start progress for PDF generation
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=console,
+        )
+        task = progress.add_task("[cyan]Generating PDF...", total=1)
 
-        print(f"\n✅ PDF generated: {output}")
-        print(f"📊 Fonts included: {len(valid_infos)}")
-        print(f"⚠️  Incompatible fonts: {len(rejected)}")
+        with progress:
+            # Suppress warnings during final PDF generation
+            import warnings
+            import sys
+            from io import StringIO
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # Also suppress stdout and stderr temporarily
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
+                captured_output = StringIO()
+                sys.stdout = captured_output
+                sys.stderr = captured_output
+
+                try:
+                    html.write_pdf(output, stylesheets=[css], font_config=font_config)
+                finally:
+                    sys.stdout = old_stdout
+                    sys.stderr = old_stderr
+                    progress.update(task, advance=1)
+
+        console.print(f"\n[bold green]✅[/bold green] PDF generated: [cyan]{output}[/cyan]")
+        console.print(f"[bold blue]📊[/bold blue] Fonts included: [cyan]{len(valid_infos)}[/cyan]")
+        console.print(f"[bold yellow]⚠️[/bold yellow] Incompatible fonts: [cyan]{len(rejected)}[/cyan]")
 
         if rejected:
-            print("\n📋 Problematic fonts and their issues:")
+            console.print("\n[bold yellow]📋[/bold yellow] Problematic fonts and their issues:")
             for font_file in sorted(rejected):
                 error = validation_errors.get(font_file, "Unknown error")
-                print(f"  ❌ {font_file}: {error}")
+                console.print(f"  [red]❌[/red] [red]{font_file}[/red]: {error}")
 
     except Exception as e:
         error_msg = str(e)
         if not error_msg:
             error_msg = f"Unknown error (type: {type(e).__name__})"
-        print(f"\n❌ Error generating PDF: {error_msg}")
-        print(
-            "💡 This is unexpected since all fonts were validated. Check the error above."
+        console.print(f"\n[bold red]❌[/bold red] Error generating PDF: [red]{error_msg}[/red]")
+        console.print(
+            "[yellow]💡[/yellow] This is unexpected since all fonts were validated. Check the error above."
         )
 
 
@@ -455,8 +512,14 @@ if __name__ == "__main__":
     import sys
     import argparse
 
+    # Display program header
+    console.print(Panel.fit(
+        "[bold blue]FontSampler[/bold blue] - [cyan]Generate PDF font catalog[/cyan]",
+        border_style="blue"
+    ))
+
     parser = argparse.ArgumentParser(
-        description="🎨 Generate PDF samples of fonts found in a directory",
+        description="🎨 Generate PDF font catalog of fonts found in a directory",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -492,26 +555,25 @@ Examples:
         help="Limit the number of fonts to process (useful for testing)",
     )
 
-
-
     args = parser.parse_args()
 
     if not os.path.exists(args.directory):
-        print(f"❌ Error: Directory '{args.directory}' does not exist")
+        console.print(f"[bold red]❌[/bold red] Error: Directory '[red]{args.directory}[/red]' does not exist")
         sys.exit(1)
 
     if not os.path.isdir(args.directory):
-        print(f"❌ Error: '{args.directory}' is not a directory")
+        console.print(f"[bold red]❌[/bold red] Error: '[red]{args.directory}[/red]' is not a directory")
         sys.exit(1)
 
     fonts = find_fonts(args.directory)
     if not fonts:
-        print(f"🔍 No font files (.ttf, .otf) found in '{args.directory}'")
+        console.print(f"[bold blue]🔍[/bold blue] No font files (.ttf, .otf) found in '[cyan]{args.directory}[/cyan]'")
         sys.exit(1)
 
     # Apply font limit if specified
     if args.limit and len(fonts) > args.limit:
-        print(f"📝 Limiting to first {args.limit} fonts (found {len(fonts)})")
+        console.print(f"[bold yellow]📝[/bold yellow] Limiting to first [cyan]{args.limit}[/cyan] fonts (found [cyan]{len(fonts)}[/cyan])")
         fonts = fonts[: args.limit]
 
+    console.print("\n[bold yellow]⚙️[/bold yellow] Starting font processing...")
     generate_pdf_with_toc(fonts, args.output)

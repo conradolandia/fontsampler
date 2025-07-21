@@ -11,6 +11,7 @@ A Python script that generates PDF samples of fonts found in a directory. The sc
 - **Text Wrapping**: All text properly wraps to stay within page boundaries
 - **Table of Contents**: Generated automatically with page numbers
 - **Font Support**: Uses WeasyPrint with Pango for TrueType, OpenType and PostScript font support
+- **Rich UI**: Enhanced visual output with progress bars, colored status messages, and real-time feedback
 
 ## Requirements
 
