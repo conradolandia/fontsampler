@@ -16,20 +16,53 @@ PARAGRAPH = (
 def extract_font_info(path):
     """Extract font metadata using fontTools."""
     try:
-        font = TTFont(path, fontNumber=0)
+        # Suppress fontTools warnings during initial parsing
+        import warnings
+        import sys
+        from io import StringIO
+        
+        # Capture and suppress warnings during font parsing
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # Also suppress stdout and stderr temporarily to catch fontTools messages
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            captured_output = StringIO()
+            sys.stdout = captured_output
+            sys.stderr = captured_output
+            
+            try:
+                # Try to open the font with more lenient parsing
+                font = TTFont(path, fontNumber=0, lazy=True)
+            finally:
+                # Restore stdout and stderr
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+
+        # Validate that the font has required tables
+        if "name" not in font:
+            print(f"  ⚠️  Font {os.path.basename(path)} missing name table")
+            return None
+
         name = ""
         version = ""
         copyright = ""
         family = ""
-        for record in font["name"].names:
-            if record.nameID == 1 and not family:
-                family = record.toStr()
-            if record.nameID == 4 and not name:
-                name = record.toStr()
-            if record.nameID == 5 and not version:
-                version = record.toStr()
-            if record.nameID == 0 and not copyright:
-                copyright = record.toStr()
+
+        try:
+            for record in font["name"].names:
+                if record.nameID == 1 and not family:
+                    family = record.toStr()
+                if record.nameID == 4 and not name:
+                    name = record.toStr()
+                if record.nameID == 5 and not version:
+                    version = record.toStr()
+                if record.nameID == 0 and not copyright:
+                    copyright = record.toStr()
+        except Exception as e:
+            print(f"  ⚠️  Error reading name table for {os.path.basename(path)}: {e}")
+            # Continue with empty values rather than failing completely
+
         return {
             "file": os.path.basename(path),
             "path": os.path.abspath(path),  # Use absolute path
@@ -38,7 +71,8 @@ def extract_font_info(path):
             "version": version,
             "copyright": copyright,
         }
-    except Exception:
+    except Exception as e:
+        print(f"  ❌ Failed to parse font {os.path.basename(path)}: {e}")
         return None
 
 
@@ -52,12 +86,82 @@ def find_fonts(root):
     return fonts
 
 
+def validate_font_with_weasyprint(font_path, font_family):
+    """Test if a font can be loaded and used by WeasyPrint for PDF generation."""
+    try:
+        # Create a minimal HTML with the font
+        test_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @font-face {{
+                    font-family: "{font_family}";
+                    src: url("file://{font_path}") format("truetype");
+                }}
+                .test {{
+                    font-family: "{font_family}", sans-serif;
+                    font-size: 12px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="test">Test text</div>
+        </body>
+        </html>
+        """
+
+        # Try to actually generate a PDF with this font
+        html = HTML(string=test_html)
+        font_config = FontConfiguration()
+
+        from io import BytesIO
+        import warnings
+        import sys
+        from io import StringIO
+        
+        # Suppress warnings during PDF generation test
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # Also suppress stdout and stderr temporarily
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            captured_output = StringIO()
+            sys.stdout = captured_output
+            sys.stderr = captured_output
+            
+            try:
+                html.write_pdf(target=BytesIO(), stylesheets=[], font_config=font_config)
+            finally:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+
+        # If we get here, the font works with PDF generation
+        return True
+
+    except Exception as e:
+        error_msg = str(e)
+        if not error_msg:
+            error_msg = f"PDF generation failed (type: {type(e).__name__})"
+        return False, error_msg
+
+
 def register_font_for_weasyprint(font_path):
     """Register font for WeasyPrint, return font family name."""
-    # WeasyPrint can handle fonts directly via CSS @font-face
-    # We'll use a unique identifier as the font family name
-    font_family = f"font_{uuid.uuid4().hex[:8]}"
-    return font_family
+    try:
+        # Validate the font file exists and is readable
+        if not os.path.exists(font_path) or not os.access(font_path, os.R_OK):
+            print(f"  ⚠️  Font file not accessible: {os.path.basename(font_path)}")
+            return None
+
+        # WeasyPrint can handle fonts directly via CSS @font-face
+        # We'll use a unique identifier as the font family name
+        font_family = f"font_{uuid.uuid4().hex[:8]}"
+        return font_family
+    except Exception as e:
+        print(f"  ❌ Error registering font {os.path.basename(font_path)}: {e}")
+        return None
 
 
 def create_css_for_fonts(font_infos):
@@ -96,12 +200,13 @@ def create_html_content(font_infos):
         if not font_family:
             continue
 
-        page_num = len(toc_entries) + 2
-        toc_entries.append((info["name"] or info["file"], page_num))
+        # Create a safe anchor ID from the filename
+        anchor_id = f"font_{i}_{info['file'].replace('.', '_').replace(' ', '_')}"
+        toc_entries.append((info["name"] or info["file"], anchor_id))
 
-        # Create font sample page
+        # Create font sample page with anchor
         page_html = f"""
-        <div class="font-page">
+        <div class="font-page" id="{anchor_id}">
             <h1 class="font-header">{info["file"]}</h1>
             
             <div class="font-metadata">
@@ -125,15 +230,15 @@ def create_html_content(font_infos):
         """
         font_pages.append(page_html)
 
-    # Create table of contents
+    # Create table of contents with clickable links
     toc_html = """
     <div class="toc-page">
         <h1>Table of Contents</h1>
         <div class="toc-entries">
     """
 
-    for name, page in toc_entries:
-        toc_html += f'<div class="toc-entry"><span class="toc-name">{name}</span><span class="toc-page">{page}</span></div>'
+    for name, anchor_id in toc_entries:
+        toc_html += f'<div class="toc-entry"><a href="#{anchor_id}" class="toc-name">{name}</a></div>'
 
     toc_html += """
         </div>
@@ -169,11 +274,14 @@ def create_html_content(font_infos):
             .font-header {{
                 font-size: 24px;
                 margin-bottom: 20px;
-                color: #333;
+                color: #444;
             }}
             
             .font-metadata {{
-                margin-bottom: 20px;
+                padding: 10px 0;
+                margin: 10px 0 20px 0;
+                border-top: 1px solid #444;
+                border-bottom: 1px solid #444;
                 line-height: 1.4;
             }}
             
@@ -192,7 +300,7 @@ def create_html_content(font_infos):
             
             .font-paragraph {{
                 line-height: 1.4;
-                text-align: justify;
+                text-align: left;
             }}
             
             .toc-page {{
@@ -210,13 +318,20 @@ def create_html_content(font_infos):
             }}
             
             .toc-entry {{
-                display: flex;
-                justify-content: space-between;
                 margin-bottom: 5px;
             }}
             
             .toc-name {{
-                flex: 1;
+                text-decoration: none;
+                color: #0066cc;
+            }}
+            
+            .toc-name:hover {{
+                text-decoration: underline;
+            }}
+            
+            .toc-name::after {{
+                content: leader('.') target-counter(attr(href), page);
             }}
         </style>
     </head>
@@ -237,6 +352,7 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
 
     valid_infos = []
     rejected = []
+    validation_errors = {}
 
     print(f"🔍 Total fonts found: {len(raw_infos)}")
     print("⚙️  Processing fonts...")
@@ -245,18 +361,38 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         if i % 50 == 0:
             print(f"  📝 Processing font {i + 1}/{len(raw_infos)}...")
 
-        result = register_font_for_weasyprint(info["path"])
-        if result:
-            info["_registered_name"] = result
+        # Register font and get family name
+        font_family = register_font_for_weasyprint(info["path"])
+        if not font_family:
+            rejected.append(info["file"])
+            validation_errors[info["file"]] = "Failed to register font"
+            continue
+
+        # Validate font with WeasyPrint test
+        validation_result = validate_font_with_weasyprint(info["path"], font_family)
+        if validation_result is True:
+            info["_registered_name"] = font_family
             valid_infos.append(info)
         else:
             rejected.append(info["file"])
+            error_msg = (
+                validation_result[1]
+                if isinstance(validation_result, tuple)
+                else str(validation_result)
+            )
+            validation_errors[info["file"]] = error_msg
+            print(f"  ❌ {info['file']}: {error_msg}")
 
     # Sort fonts alphabetically
     valid_infos.sort(key=lambda x: x["file"].lower())
 
     if not valid_infos:
         print("❌ No compatible fonts found to generate PDF.")
+        if rejected:
+            print("\n📋 Problematic fonts and their issues:")
+            for font_file in sorted(rejected):
+                error = validation_errors.get(font_file, "Unknown error")
+                print(f"  ❌ {font_file}: {error}")
         return
 
     print(f"📄 Creating PDF with {len(valid_infos)} fonts...")
@@ -271,19 +407,48 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
     font_config = FontConfiguration()
 
     # Generate PDF
-    html = HTML(string=html_content)
-    css = CSS(string=css_content, font_config=font_config)
+    try:
+        html = HTML(string=html_content)
+        css = CSS(string=css_content, font_config=font_config)
 
-    html.write_pdf(output, stylesheets=[css], font_config=font_config)
+        # Suppress warnings during final PDF generation
+        import warnings
+        import sys
+        from io import StringIO
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            # Also suppress stdout and stderr temporarily
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            captured_output = StringIO()
+            sys.stdout = captured_output
+            sys.stderr = captured_output
+            
+            try:
+                html.write_pdf(output, stylesheets=[css], font_config=font_config)
+            finally:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
 
-    print(f"\n✅ PDF generated: {output}")
-    print(f"📊 Fonts included: {len(valid_infos)}")
-    print(f"⚠️  Incompatible fonts: {len(rejected)}")
+        print(f"\n✅ PDF generated: {output}")
+        print(f"📊 Fonts included: {len(valid_infos)}")
+        print(f"⚠️  Incompatible fonts: {len(rejected)}")
 
-    if rejected:
-        print("📋 Rejected fonts:")
-        for f in sorted(rejected):
-            print(f"  ❌ {f}")
+        if rejected:
+            print("\n📋 Problematic fonts and their issues:")
+            for font_file in sorted(rejected):
+                error = validation_errors.get(font_file, "Unknown error")
+                print(f"  ❌ {font_file}: {error}")
+
+    except Exception as e:
+        error_msg = str(e)
+        if not error_msg:
+            error_msg = f"Unknown error (type: {type(e).__name__})"
+        print(f"\n❌ Error generating PDF: {error_msg}")
+        print(
+            "💡 This is unexpected since all fonts were validated. Check the error above."
+        )
 
 
 if __name__ == "__main__":
@@ -297,7 +462,8 @@ if __name__ == "__main__":
 Examples:
   fontsampler /usr/share/fonts          # Sample all fonts in system directory
   fontsampler ~/fonts -o my_samples.pdf # Custom output filename
-  fontsampler . --help                   # Show this help message
+  fontsampler . -l 10                   # Limit to first 10 fonts (for testing)
+  fontsampler . --help                  # Show this help message
         """,
     )
 
@@ -319,6 +485,15 @@ Examples:
         help="Show detailed information about font processing",
     )
 
+    parser.add_argument(
+        "-l",
+        "--limit",
+        type=int,
+        help="Limit the number of fonts to process (useful for testing)",
+    )
+
+
+
     args = parser.parse_args()
 
     if not os.path.exists(args.directory):
@@ -333,5 +508,10 @@ Examples:
     if not fonts:
         print(f"🔍 No font files (.ttf, .otf) found in '{args.directory}'")
         sys.exit(1)
+
+    # Apply font limit if specified
+    if args.limit and len(fonts) > args.limit:
+        print(f"📝 Limiting to first {args.limit} fonts (found {len(fonts)})")
+        fonts = fonts[: args.limit]
 
     generate_pdf_with_toc(fonts, args.output)
