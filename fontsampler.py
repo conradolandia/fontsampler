@@ -18,6 +18,7 @@ from rich.progress import (
 from rich.panel import Panel
 from rich.traceback import install
 
+MAX_FONTS = 1000
 SAMPLE_TEXT = "Sphinx of black quartz, judge my vow!"
 PARAGRAPH = (
     "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
@@ -807,8 +808,8 @@ Examples:
         "-m",
         "--max-fonts",
         type=int,
-        default=1000,
-        help="Maximum number of fonts to process (default: 1000, use 0 for unlimited)",
+        default=MAX_FONTS,
+        help=f"Maximum number of fonts to process (default: {MAX_FONTS}, use 0 for unlimited)",
     )
 
     args = parser.parse_args()
@@ -852,7 +853,7 @@ Examples:
     console.print("\n[bold yellow]⚙️[/bold yellow] Starting font processing...")
 
     # Warn about memory usage for large collections
-    if len(fonts) > 1000:
+    if len(fonts) > MAX_FONTS:
         console.print(
             f"[bold yellow]⚠️[/bold yellow] Processing [cyan]{len(fonts)}[/cyan] fonts may require significant memory"
         )
