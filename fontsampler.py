@@ -16,9 +16,138 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 from rich.panel import Panel
+from rich.traceback import install
+
+# Install Rich traceback handler for better error display
+install(show_locals=False)
 
 # Initialize Rich console
 console = Console()
+
+# Global warning storage
+captured_warnings = []
+captured_stderr = []
+
+def warning_handler(message, category, filename, lineno, file=None, line=None):
+    """Custom warning handler that captures warnings for later display."""
+    warning_info = {
+        'message': str(message),
+        'category': category.__name__,
+        'filename': filename,
+        'lineno': lineno,
+        'line': line
+    }
+    captured_warnings.append(warning_info)
+
+def stderr_capture_handler(message):
+    """Capture stderr messages for later display."""
+    if message.strip():  # Only capture non-empty messages
+        captured_stderr.append(message.strip())
+
+def display_captured_warnings():
+    """Display captured warnings and stderr messages in a nice Rich format."""
+    has_warnings = bool(captured_warnings)
+    has_stderr = bool(captured_stderr)
+    
+    if not has_warnings and not has_stderr:
+        return
+    
+    console.print("\n[bold yellow]⚠️[/bold yellow] [yellow]Messages encountered during processing:[/yellow]")
+    
+    # Display Python warnings
+    if has_warnings:
+        console.print("\n[bold cyan]Python Warnings:[/bold cyan]")
+        # Group warnings by type for better organization
+        warning_groups = {}
+        for warning in captured_warnings:
+            category = warning['category']
+            if category not in warning_groups:
+                warning_groups[category] = []
+            warning_groups[category].append(warning)
+        
+        # Display warnings grouped by type
+        for category, warnings_list in warning_groups.items():
+            if len(warnings_list) == 1:
+                warning = warnings_list[0]
+                location = f"{os.path.basename(warning['filename'])}:{warning['lineno']}"
+                console.print(f"  [cyan]{category}[/cyan]: [white]{warning['message']}[/white] [dim]({location})[/dim]")
+            else:
+                console.print(f"  [cyan]{category}[/cyan]: [white]{len(warnings_list)} warnings[/white]")
+                for warning in warnings_list[:3]:  # Show first 3 of each type
+                    location = f"{os.path.basename(warning['filename'])}:{warning['lineno']}"
+                    console.print(f"    • [white]{warning['message'][:60]}{'...' if len(warning['message']) > 60 else ''}[/white] [dim]({location})[/dim]")
+                if len(warnings_list) > 3:
+                    console.print(f"    [dim]... and {len(warnings_list) - 3} more[/dim]")
+    
+    # Display stderr messages
+    if has_stderr:
+        console.print("\n[bold magenta]System Messages:[/bold magenta]")
+        # Group similar stderr messages
+        stderr_groups = {}
+        for message in captured_stderr:
+            # Create a key based on the first part of the message
+            key = message.split()[0] if message.split() else message
+            if key not in stderr_groups:
+                stderr_groups[key] = []
+            stderr_groups[key].append(message)
+        
+        for key, messages in stderr_groups.items():
+            if len(messages) == 1:
+                console.print(f"  [white]{messages[0]}[/white]")
+            else:
+                console.print(f"  [white]{len(messages)} similar messages:[/white]")
+                for message in messages[:3]:  # Show first 3
+                    console.print(f"    • [white]{message[:60]}{'...' if len(message) > 60 else ''}[/white]")
+                if len(messages) > 3:
+                    console.print(f"    [dim]... and {len(messages) - 3} more[/dim]")
+    
+    # Clear all captured messages for next run
+    captured_warnings.clear()
+    captured_stderr.clear()
+
+class WarningCaptureContext:
+    """Context manager for capturing warnings with custom handler."""
+    def __enter__(self):
+        self.original_showwarning = warnings.showwarning
+        warnings.showwarning = warning_handler
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        warnings.showwarning = self.original_showwarning
+
+class SafeStderrCaptureContext:
+    """Safer context manager for capturing stderr output that doesn't interfere with critical operations."""
+    def __enter__(self):
+        # Only capture stderr for non-critical operations
+        self.original_stderr = sys.stderr
+        self.captured_output = StringIO()
+        sys.stderr = self.captured_output
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            # Process captured stderr output
+            captured_text = self.captured_output.getvalue()
+            if captured_text.strip():
+                for line in captured_text.splitlines():
+                    if line.strip():
+                        stderr_capture_handler(line)
+        except Exception:
+            # If anything goes wrong with processing, just ignore it
+            pass
+        finally:
+            # Always restore original stderr
+            sys.stderr = self.original_stderr
+
+def capture_warnings_context():
+    """Context manager for capturing warnings with custom handler."""
+    return WarningCaptureContext()
+
+def capture_weasyprint_warnings():
+    """Capture WeasyPrint warnings without interfering with main operations."""
+    # This is a simpler approach that doesn't redirect stderr
+    # but can still capture some warnings through the warning system
+    return capture_warnings_context()
 
 SAMPLE_TEXT = "Sphinx of black quartz, judge my vow!"
 PARAGRAPH = (
@@ -32,9 +161,8 @@ PARAGRAPH = (
 def extract_font_info(path):
     """Extract font metadata using fontTools."""
     try:
-        # Capture and suppress warnings during font parsing
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+        # Capture warnings during font parsing
+        with capture_warnings_context():
             # Also suppress stdout and stderr temporarily to catch fontTools messages
             old_stdout = sys.stdout
             old_stderr = sys.stderr
@@ -159,19 +287,15 @@ def validate_font_with_weasyprint(font_path, font_family):
         font_config = FontConfiguration()
 
         from io import BytesIO
-        import warnings
         import sys
         from io import StringIO
 
-        # Suppress warnings during PDF generation test
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # Also suppress stdout and stderr temporarily
+        # Capture warnings during PDF generation test
+        with capture_warnings_context():
+            # Also suppress stdout temporarily
             old_stdout = sys.stdout
-            old_stderr = sys.stderr
             captured_output = StringIO()
             sys.stdout = captured_output
-            sys.stderr = captured_output
 
             try:
                 html.write_pdf(
@@ -179,7 +303,6 @@ def validate_font_with_weasyprint(font_path, font_family):
                 )
             finally:
                 sys.stdout = old_stdout
-                sys.stderr = old_stderr
 
         # If we get here, the font works with PDF generation
         return True
@@ -453,6 +576,10 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         console.print(
             "[bold red]❌[/bold red] No compatible fonts found to generate PDF."
         )
+        
+        # Display any captured warnings
+        display_captured_warnings()
+        
         if rejected:
             console.print(
                 "\n[bold yellow]📋[/bold yellow] Problematic fonts and their issues:"
@@ -489,10 +616,26 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         task = progress.add_task("[cyan]Generating PDF...", total=1)
 
         with progress:
-            try:
-                html.write_pdf(output, stylesheets=[css], font_config=font_config)
-            finally:
-                progress.update(task, advance=1)
+            # Capture warnings and stderr for the final PDF generation
+            with capture_warnings_context():
+                # Also capture stderr for WeasyPrint warnings
+                original_stderr = sys.stderr
+                stderr_capture = StringIO()
+                sys.stderr = stderr_capture
+                
+                try:
+                    html.write_pdf(output, stylesheets=[css], font_config=font_config)
+                finally:
+                    # Process captured stderr
+                    stderr_output = stderr_capture.getvalue()
+                    if stderr_output.strip():
+                        for line in stderr_output.splitlines():
+                            if line.strip():
+                                stderr_capture_handler(line)
+                    
+                    # Restore stderr
+                    sys.stderr = original_stderr
+                    progress.update(task, advance=1)
 
         console.print(
             f"\n[bold green]✅[/bold green] PDF generated: [cyan]{output}[/cyan]"
@@ -503,6 +646,9 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         console.print(
             f"[bold yellow]⚠️[/bold yellow] Incompatible fonts: [cyan]{len(rejected)}[/cyan]"
         )
+
+        # Display any captured warnings
+        display_captured_warnings()
 
         if rejected:
             console.print(
@@ -603,3 +749,6 @@ Examples:
 
     console.print("\n[bold yellow]⚙️[/bold yellow] Starting font processing...")
     generate_pdf_with_toc(fonts, args.output)
+    
+    # Display any remaining warnings at the end
+    display_captured_warnings()
