@@ -273,7 +273,7 @@ def create_html_content(font_infos):
             
             .font-header {{
                 font-size: 24px;
-                margin-bottom: 20px;
+                margin-bottom: 10px;
                 color: #444;
             }}
             
