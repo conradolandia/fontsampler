@@ -198,6 +198,16 @@ def extract_font_info(path):
             try:
                 # Try to open the font with more lenient parsing
                 font = TTFont(path, fontNumber=0, lazy=True)
+            except Exception:
+                # If lazy loading fails, try without lazy loading
+                try:
+                    font = TTFont(path, fontNumber=0, lazy=False)
+                except Exception as e:
+                    # If both fail, return None
+                    console.print(
+                        f"  [bold red]❌[/bold red] Failed to parse font [red]{os.path.basename(path)}[/red]: {e}"
+                    )
+                    return None
             finally:
                 # Restore stdout and stderr
                 sys.stdout = old_stdout
@@ -543,17 +553,51 @@ def create_html_content(font_infos):
 
 def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
     """Generate PDF using WeasyPrint"""
-    raw_infos = [extract_font_info(p) for p in font_paths]
-    raw_infos = [f for f in raw_infos if f]
+    console.print(
+        f"[bold blue]🔍[/bold blue] Total fonts found: [cyan]{len(font_paths)}[/cyan]"
+    )
+    console.print("[bold yellow]⚙️[/bold yellow] Extracting font information...")
+
+    # Extract font information with progress bar and memory management
+    raw_infos = []
+    batch_size = 100  # Process fonts in batches to manage memory
+
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("[cyan]Extracting font info...", total=len(font_paths))
+
+        for i, path in enumerate(font_paths):
+            progress.update(
+                task, description=f"[cyan]Extracting {os.path.basename(path)}..."
+            )
+
+            try:
+                info = extract_font_info(path)
+                if info:
+                    raw_infos.append(info)
+            except Exception as e:
+                console.print(
+                    f"  [bold red]❌[/bold red] Error processing [red]{os.path.basename(path)}[/red]: {e}"
+                )
+
+            # Force garbage collection every batch_size fonts to prevent memory buildup
+            if (i + 1) % batch_size == 0:
+                import gc
+
+                gc.collect()
+
+            progress.advance(task)
+
+    console.print("[bold yellow]⚙️[/bold yellow] Processing fonts...")
 
     valid_infos = []
     rejected = []
     validation_errors = {}
-
-    console.print(
-        f"[bold blue]🔍[/bold blue] Total fonts found: [cyan]{len(raw_infos)}[/cyan]"
-    )
-    console.print("[bold yellow]⚙️[/bold yellow] Processing fonts...")
 
     with Progress(
         TextColumn("[progress.description]{task.description}"),
@@ -567,30 +611,45 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         for i, info in enumerate(raw_infos):
             progress.update(task, description=f"[cyan]Processing {info['file']}...")
 
-            # Register font and get family name
-            font_family = register_font_for_weasyprint(info["path"])
-            if not font_family:
-                rejected.append(info["file"])
-                validation_errors[info["file"]] = "Failed to register font"
-                progress.advance(task)
-                continue
+            try:
+                # Register font and get family name
+                font_family = register_font_for_weasyprint(info["path"])
+                if not font_family:
+                    rejected.append(info["file"])
+                    validation_errors[info["file"]] = "Failed to register font"
+                    progress.advance(task)
+                    continue
 
-            # Validate font with WeasyPrint test
-            validation_result = validate_font_with_weasyprint(info["path"], font_family)
-            if validation_result is True:
-                info["_registered_name"] = font_family
-                valid_infos.append(info)
-            else:
+                # Validate font with WeasyPrint test
+                validation_result = validate_font_with_weasyprint(
+                    info["path"], font_family
+                )
+                if validation_result is True:
+                    info["_registered_name"] = font_family
+                    valid_infos.append(info)
+                else:
+                    rejected.append(info["file"])
+                    error_msg = (
+                        validation_result[1]
+                        if isinstance(validation_result, tuple)
+                        else str(validation_result)
+                    )
+                    validation_errors[info["file"]] = error_msg
+                    console.print(
+                        f"  [bold red]❌[/bold red] [red]{info['file']}[/red]: {error_msg}"
+                    )
+            except Exception as e:
                 rejected.append(info["file"])
-                error_msg = (
-                    validation_result[1]
-                    if isinstance(validation_result, tuple)
-                    else str(validation_result)
-                )
-                validation_errors[info["file"]] = error_msg
+                validation_errors[info["file"]] = f"Unexpected error: {e}"
                 console.print(
-                    f"  [bold red]❌[/bold red] [red]{info['file']}[/red]: {error_msg}"
+                    f"  [bold red]❌[/bold red] [red]{info['file']}[/red]: Unexpected error: {e}"
                 )
+
+            # Force garbage collection every batch_size fonts to prevent memory buildup
+            if (i + 1) % batch_size == 0:
+                import gc
+
+                gc.collect()
 
             progress.advance(task)
 
@@ -744,6 +803,14 @@ Examples:
         help="Limit the number of fonts to process (useful for testing)",
     )
 
+    parser.add_argument(
+        "-m",
+        "--max-fonts",
+        type=int,
+        default=1000,
+        help="Maximum number of fonts to process (default: 1000, use 0 for unlimited)",
+    )
+
     args = parser.parse_args()
 
     if not os.path.exists(args.directory):
@@ -772,7 +839,27 @@ Examples:
         )
         fonts = fonts[: args.limit]
 
+    # Apply maximum font limit for safety
+    if args.max_fonts > 0 and len(fonts) > args.max_fonts:
+        console.print(
+            f"[bold yellow]⚠️[/bold yellow] Limiting to [cyan]{args.max_fonts}[/cyan] fonts for memory safety (found [cyan]{len(fonts)}[/cyan])"
+        )
+        console.print(
+            "[yellow]💡[/yellow] Use --max-fonts 0 to process all fonts (may cause memory issues)"
+        )
+        fonts = fonts[: args.max_fonts]
+
     console.print("\n[bold yellow]⚙️[/bold yellow] Starting font processing...")
+
+    # Warn about memory usage for large collections
+    if len(fonts) > 1000:
+        console.print(
+            f"[bold yellow]⚠️[/bold yellow] Processing [cyan]{len(fonts)}[/cyan] fonts may require significant memory"
+        )
+        console.print(
+            "[yellow]💡[/yellow] Consider using --max-fonts to limit the number of fonts processed"
+        )
+
     generate_pdf_with_toc(fonts, args.output)
 
     # Display any remaining warnings at the end
