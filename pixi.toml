@@ -16,7 +16,7 @@ install = {cmd = "bash -c 'cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'
 [dependencies]
 fonttools = ">=4.59.0,<5"
 pycairo = ">=1.28.0,<2"
-pypdf2 = ">=3.0.1,<4"
 pyinstaller = ">=6.8.0,<7"
-reportlab = ">=4.1.0,<5"
-freetype-py = ">=2.3.0,<3"
+weasyprint = ">=62.0,<63"
+pygobject = ">=3.48.0,<4"
+cairocffi = ">=1.6.0,<2"

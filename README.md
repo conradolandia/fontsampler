@@ -10,7 +10,8 @@ A Python script that generates PDF samples of fonts found in a directory. The sc
 - **Character Set**: Displays full alphabet, numbers, and special characters
 - **Text Wrapping**: All text properly wraps to stay within page boundaries
 - **Table of Contents**: Generated automatically with page numbers
--
+- **Font Support**: Uses WeasyPrint with Pango for native TrueType, OpenType and PostScript font support
+
 ## Requirements
 
 - [Pixi](https://pixi.sh/) for dependency management
@@ -62,13 +63,8 @@ This will create a `fontsampler` executable in the `dist/` directory.
 - `pixi run build-debug` - Build with debug information
 - `pixi run build-simple` - Simple build without spec file
 - `pixi run build-clean` - Clean build (removes previous build artifacts)
-
-### Build Warnings
-
-You may see warnings about `__glibc`, `__unix`, or `ldd` during the build process. These are normal and safe to ignore:
-- They're related to system libraries that will be available on target systems
-- The binary will still work correctly
-- These warnings don't affect the final executable
+- `pixi run install` - Copy the built binary to `$HOME/.local/bin` (overwrites existing)
+- `pixi run build-install` - Build and install the binary to `$HOME/.local/bin` (overwrites existing)
 
 ## Output
 
@@ -79,13 +75,6 @@ The generated PDF contains:
   - Font metadata (name, family, version, copyright)
   - Sample text at multiple sizes
   - Full character set paragraph
-
-## Sample Text
-
-The script uses the pangram "Sphinx of black quartz, judge my vow!" for font samples, plus a comprehensive character set including:
-- Uppercase and lowercase letters
-- Numbers 0-9
-- Special characters and symbols
 
 ## License
 

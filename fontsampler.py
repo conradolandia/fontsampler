@@ -1,16 +1,8 @@
 import os
-import io
 import uuid
-from shutil import copyfile
-from tempfile import mkdtemp
 from fontTools.ttLib import TTFont
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont as RLTTFont
-
-from PyPDF2 import PdfReader, PdfWriter
+from weasyprint import HTML, CSS
+from weasyprint.text.fonts import FontConfiguration
 
 SAMPLE_TEXT = "Sphinx of black quartz, judge my vow!"
 PARAGRAPH = (
@@ -21,56 +13,8 @@ PARAGRAPH = (
 )
 
 
-def wrap_text(text, font_name, font_size, max_width):
-    """Wrap text to fit within max_width using the specified font."""
-    if not text:
-        return [""]
-
-    # Create a temporary canvas to measure text
-    temp_canvas = canvas.Canvas(io.BytesIO())
-    temp_canvas.setFont(font_name, font_size)
-
-    words = text.split()
-    lines = []
-    current_line = ""
-
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        test_width = temp_canvas.stringWidth(test_line, font_name, font_size)
-
-        if test_width <= max_width:
-            current_line = test_line
-        else:
-            if current_line:
-                lines.append(current_line)
-                current_line = word
-            else:
-                # Word is too long, break it
-                lines.append(word)
-
-    if current_line:
-        lines.append(current_line)
-
-    return lines if lines else [""]
-
-
-def draw_wrapped_text(
-    canvas, text, x, y, font_name, font_size, max_width, line_height=None
-):
-    """Draw text with automatic wrapping."""
-    if line_height is None:
-        line_height = font_size + 2
-
-    lines = wrap_text(text, font_name, font_size, max_width)
-    for line in lines:
-        canvas.setFont(font_name, font_size)
-        canvas.drawString(x, y, line)
-        y -= line_height
-
-    return y  # Return the new y position
-
-
 def extract_font_info(path):
+    """Extract font metadata using fontTools."""
     try:
         font = TTFont(path, fontNumber=0)
         name = ""
@@ -88,7 +32,7 @@ def extract_font_info(path):
                 copyright = record.toStr()
         return {
             "file": os.path.basename(path),
-            "path": path,
+            "path": os.path.abspath(path),  # Use absolute path
             "family": family,
             "name": name,
             "version": version,
@@ -99,6 +43,7 @@ def extract_font_info(path):
 
 
 def find_fonts(root):
+    """Find all font files in directory tree."""
     fonts = []
     for dirpath, _, filenames in os.walk(root):
         for f in filenames:
@@ -107,193 +52,207 @@ def find_fonts(root):
     return fonts
 
 
-def convert_otf_to_ttf(otf_path):
-    """Convert OpenType font to TrueType format if possible."""
-    try:
-        # Load the font
-        font = TTFont(otf_path)
-        
-        # Check if it's an OpenType font with PostScript outlines
-        if 'CFF ' in font or 'CFF2' in font:
-            # Create a temporary file for the converted font
-            temp_dir = mkdtemp()
-            ttf_path = os.path.join(temp_dir, os.path.splitext(os.path.basename(otf_path))[0] + '.ttf')
-            
-            # For CFF fonts, we need to convert them to TrueType
-            # This is a simplified approach - we'll try to save as TTF
-            # but this may not work for all CFF fonts
-            try:
-                # Remove OpenType flavor to make it a pure TTF
-                font.flavor = None
-                font.save(ttf_path)
-                return ttf_path
-            except Exception:
-                # If direct save fails, try a different approach
-                # For now, we'll return None and let ReportLab handle it
-                return None
-        else:
-            # Font is already TrueType or doesn't need conversion
-            return None
-    except Exception as e:
-        print(f"Error converting font {os.path.basename(otf_path)}: {e}")
-        return None
+def register_font_for_weasyprint(font_path):
+    """Register font for WeasyPrint, return font family name."""
+    # WeasyPrint can handle fonts directly via CSS @font-face
+    # We'll use a unique identifier as the font family name
+    font_family = f"font_{uuid.uuid4().hex[:8]}"
+    return font_family
 
 
-def register_font_for_pdf(font_path):
-    """Register a font for PDF generation, return (font_name, was_converted) or None if incompatible."""
-    try:
-        temp_name = "F" + uuid.uuid4().hex
-        temp_copy = os.path.join(mkdtemp(), os.path.basename(font_path))
-        copyfile(font_path, temp_copy)
-        pdfmetrics.registerFont(RLTTFont(temp_name, temp_copy))
-        return temp_name, False
-    except Exception as e:
-        # If direct registration fails, try converting OpenType to TrueType
-        if font_path.lower().endswith('.otf'):
-            print(f"Direct registration failed for {os.path.basename(font_path)}, attempting conversion...")
-            converted_path = convert_otf_to_ttf(font_path)
-            if converted_path:
-                try:
-                    temp_name = "F" + uuid.uuid4().hex
-                    pdfmetrics.registerFont(RLTTFont(temp_name, converted_path))
-                    print(f"Successfully converted and registered {os.path.basename(font_path)}")
-                    return temp_name, True
-                except Exception as conv_e:
-                    print(f"Conversion failed for {os.path.basename(font_path)}: {conv_e}")
-        
-        # Log the original error for debugging
-        print(f"Error registering font {os.path.basename(font_path)}: {e}")
-        return None
+def create_css_for_fonts(font_infos):
+    """Create CSS with @font-face declarations for all fonts."""
+    css_rules = []
+
+    for info in font_infos:
+        font_family = info.get("_registered_name")
+        if font_family:
+            # Determine format based on file extension
+            font_format = (
+                "truetype" if info["path"].lower().endswith(".ttf") else "opentype"
+            )
+
+            # Use file:// protocol for local files
+            font_url = f"file://{info['path']}"
+
+            css_rules.append(f"""
+@font-face {{
+    font-family: "{font_family}";
+    src: url("{font_url}") format("{font_format}");
+    font-display: block;
+}}
+""")
+
+    return "\n".join(css_rules)
 
 
-def create_sample_pages(font_infos):
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-
+def create_html_content(font_infos):
+    """Create HTML content for all font samples."""
     toc_entries = []
+    font_pages = []
 
     for i, info in enumerate(font_infos):
-        font_name = info.get("_registered_name")
-        if not font_name:
+        font_family = info.get("_registered_name")
+        if not font_family:
             continue
 
         page_num = len(toc_entries) + 2
         toc_entries.append((info["name"] or info["file"], page_num))
 
-        # Header with text wrapping
-        c.setFont("Helvetica-Bold", 24)
-        c.drawString(20 * mm, height - 25 * mm, f"{info['file']}")
+        # Create font sample page
+        page_html = f"""
+        <div class="font-page">
+            <h1 class="font-header">{info["file"]}</h1>
+            
+            <div class="font-metadata">
+                <p><strong>Font Name:</strong> {info["name"]}</p>
+                <p><strong>Family:</strong> {info["family"]}</p>
+                <p><strong>Version:</strong> {info["version"]}</p>
+                <p><strong>Copyright:</strong> {info["copyright"]}</p>
+            </div>
+            
+            <div class="font-samples">
+                <div class="sample-text" style="font-family: '{font_family}', sans-serif; font-size: 36px;">{SAMPLE_TEXT}</div>
+                <div class="sample-text" style="font-family: '{font_family}', sans-serif; font-size: 24px;">{SAMPLE_TEXT}</div>
+                <div class="sample-text" style="font-family: '{font_family}', sans-serif; font-size: 18px;">{SAMPLE_TEXT}</div>
+                <div class="sample-text" style="font-family: '{font_family}', sans-serif; font-size: 14px;">{SAMPLE_TEXT}</div>
+            </div>
+            
+            <div class="font-paragraph" style="font-family: '{font_family}', sans-serif; font-size: 12px;">
+                {PARAGRAPH}
+            </div>
+        </div>
+        """
+        font_pages.append(page_html)
 
-        # Font metadata with wrapping
-        y = height - 35 * mm
-        max_width = width - 40 * mm  # Leave margins
-
-        c.setFont("Helvetica", 12)
-        y = draw_wrapped_text(
-            c, f"Font Name: {info['name']}", 20 * mm, y, "Helvetica", 9, max_width
-        )
-        y = draw_wrapped_text(
-            c, f"Family: {info['family']}", 20 * mm, y, "Helvetica", 9, max_width
-        )
-        y = draw_wrapped_text(
-            c, f"Version: {info['version']}", 20 * mm, y, "Helvetica", 9, max_width
-        )
-        y = draw_wrapped_text(
-            c, f"Copyright: {info['copyright']}", 20 * mm, y, "Helvetica", 9, max_width
-        )
-
-        # Font samples
-        y -= 20 * mm  # Add some space after metadata
-        for size in [36, 24, 18, 14]:
-            y = draw_wrapped_text(
-                c, SAMPLE_TEXT, 20 * mm, y, font_name, size, max_width, size + 8
-            )
-
-        # Paragraph with proper wrapping
-        y -= 10 * mm  # Add space before paragraph
-        y = draw_wrapped_text(c, PARAGRAPH, 20 * mm, y, font_name, 12, max_width, 14)
-
-        c.showPage()
-
-    c.save()
-    buffer.seek(0)
-    return buffer, toc_entries
-
-
-def create_toc_page(toc_entries):
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(20 * mm, height - 30 * mm, "Table of Contents")
-
-    y = height - 45 * mm
-    c.setFont("Helvetica", 12)
-    max_name_width = width - 80 * mm  # Leave space for page number
+    # Create table of contents
+    toc_html = """
+    <div class="toc-page">
+        <h1>Table of Contents</h1>
+        <div class="toc-entries">
+    """
 
     for name, page in toc_entries:
-        if y < 20 * mm:
-            c.showPage()
-            y = height - 30 * mm
+        toc_html += f'<div class="toc-entry"><span class="toc-name">{name}</span><span class="toc-page">{page}</span></div>'
 
-        # Wrap long font names
-        lines = wrap_text(name, "Helvetica", 12, max_name_width)
-        for line in lines:
-            if y < 20 * mm:
-                c.showPage()
-                y = height - 30 * mm
-            c.drawString(25 * mm, y, line)
-            c.drawRightString(width - 25 * mm, y, f"{page}")
-            y -= 8 * mm
-        y -= 2 * mm  # Extra space between entries
+    toc_html += """
+        </div>
+    </div>
+    """
 
-    c.save()
-    buffer.seek(0)
-    return buffer
+    # Combine everything
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Font Samples</title>
+        <style>
+            @page {{
+                size: A4;
+                margin: 20mm;
+            }}
+            
+            body {{
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                font-size: 12px;
+                line-height: 1.4;
+            }}
+            
+            .font-page {{
+                page-break-after: always;
+                margin-bottom: 30px;
+            }}
+            
+            .font-header {{
+                font-size: 24px;
+                margin-bottom: 20px;
+                color: #333;
+            }}
+            
+            .font-metadata {{
+                margin-bottom: 20px;
+                line-height: 1.4;
+            }}
+            
+            .font-metadata p {{
+                margin: 5px 0;
+            }}
+            
+            .font-samples {{
+                margin-bottom: 20px;
+            }}
+            
+            .sample-text {{
+                margin: 10px 0;
+                line-height: 1.2;
+            }}
+            
+            .font-paragraph {{
+                line-height: 1.4;
+                text-align: justify;
+            }}
+            
+            .toc-page {{
+                page-break-after: always;
+            }}
+            
+            .toc-page h1 {{
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 30px;
+            }}
+            
+            .toc-entries {{
+                line-height: 1.2;
+            }}
+            
+            .toc-entry {{
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 5px;
+            }}
+            
+            .toc-name {{
+                flex: 1;
+            }}
+        </style>
+    </head>
+    <body>
+        {toc_html}
+        {"".join(font_pages)}
+    </body>
+    </html>
+    """
 
-
-def merge_pdfs(toc_pdf, content_pdf, output):
-    reader_toc = PdfReader(toc_pdf)
-    reader_content = PdfReader(content_pdf)
-
-    writer = PdfWriter()
-    for page in reader_toc.pages:
-        writer.add_page(page)
-    for page in reader_content.pages:
-        writer.add_page(page)
-
-    with open(output, "wb") as f:
-        writer.write(f)
+    return html_content
 
 
 def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
+    """Generate PDF using WeasyPrint"""
     raw_infos = [extract_font_info(p) for p in font_paths]
     raw_infos = [f for f in raw_infos if f]
 
     valid_infos = []
     rejected = []
-    converted_count = 0
 
     print(f"→ Total fonts found: {len(raw_infos)}")
     print("→ Processing fonts...")
-    
+
     for i, info in enumerate(raw_infos):
-        if i % 50 == 0:  # Progress indicator every 50 fonts
-            print(f"  Processing font {i+1}/{len(raw_infos)}...")
-            
-        result = register_font_for_pdf(info["path"])
+        if i % 50 == 0:
+            print(f"  Processing font {i + 1}/{len(raw_infos)}...")
+
+        result = register_font_for_weasyprint(info["path"])
         if result:
-            font_name, was_converted = result
-            info["_registered_name"] = font_name
+            info["_registered_name"] = result
             valid_infos.append(info)
-            if was_converted:
-                converted_count += 1
         else:
             rejected.append(info["file"])
 
-    # Sort fonts alphabetically by filename
+    # Sort fonts alphabetically
     valid_infos.sort(key=lambda x: x["file"].lower())
 
     if not valid_infos:
@@ -301,13 +260,24 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
         return
 
     print(f"→ Creating PDF with {len(valid_infos)} fonts...")
-    content_pdf, toc_entries = create_sample_pages(valid_infos)
-    toc_pdf = create_toc_page(toc_entries)
-    merge_pdfs(toc_pdf, content_pdf, output)
+
+    # Create HTML content
+    html_content = create_html_content(valid_infos)
+
+    # Create CSS with font declarations
+    css_content = create_css_for_fonts(valid_infos)
+
+    # Configure font handling
+    font_config = FontConfiguration()
+
+    # Generate PDF
+    html = HTML(string=html_content)
+    css = CSS(string=css_content, font_config=font_config)
+
+    html.write_pdf(output, stylesheets=[css], font_config=font_config)
 
     print(f"\n✅ PDF generated: {output}")
     print(f"→ Fonts included: {len(valid_infos)}")
-    print(f"→ Fonts converted from OpenType: {converted_count}")
     print(f"→ Incompatible fonts: {len(rejected)}")
 
     if rejected:
