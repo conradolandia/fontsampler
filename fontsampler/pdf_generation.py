@@ -18,7 +18,7 @@ from rich.progress import (
 from weasyprint import CSS, HTML
 from weasyprint.text.fonts import FontConfiguration
 
-from .config import BATCH_SIZE, PARAGRAPH, SAMPLE_TEXT
+from .config import LEGACY_BATCH_SIZE, PARAGRAPH, SAMPLE_TEXT
 from .font_discovery import extract_font_info
 from .font_validation import register_font_for_weasyprint, validate_font_with_weasyprint
 from .warning_capture import (
@@ -244,7 +244,7 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
                 )
 
             # Force garbage collection every batch_size fonts to prevent memory buildup
-            if (i + 1) % BATCH_SIZE == 0:
+            if (i + 1) % LEGACY_BATCH_SIZE == 0:
                 gc.collect()
 
             progress.advance(task)
@@ -302,7 +302,7 @@ def generate_pdf_with_toc(font_paths, output="font_samples.pdf"):
                 )
 
             # Force garbage collection every batch_size fonts to prevent memory buildup
-            if (i + 1) % BATCH_SIZE == 0:
+            if (i + 1) % LEGACY_BATCH_SIZE == 0:
                 gc.collect()
 
             progress.advance(task)

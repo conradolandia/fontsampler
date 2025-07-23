@@ -2,9 +2,6 @@
 Configuration constants for FontSampler.
 """
 
-# Font processing limits
-MAX_FONTS = 1000
-
 # Sample text for font display
 SAMPLE_TEXT = "Sphinx of black quartz, judge my vow!"
 
@@ -22,5 +19,13 @@ DEFAULT_OUTPUT = "font_samples.pdf"
 # Supported font extensions
 FONT_EXTENSIONS = (".ttf", ".otf")
 
-# Batch size for memory management
-BATCH_SIZE = 100
+# Streaming and memory management settings
+DEFAULT_BATCH_SIZE = 50
+MAX_BATCH_SIZE = 200
+MIN_BATCH_SIZE = 10
+MEMORY_THRESHOLD = 0.7  # 70% memory usage threshold
+ESTIMATED_MEMORY_PER_FONT = 5.0  # MB per font
+
+# Legacy settings (for backward compatibility)
+LEGACY_MAX_FONTS = 1000
+LEGACY_BATCH_SIZE = 100

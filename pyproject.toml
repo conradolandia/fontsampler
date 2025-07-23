@@ -14,10 +14,44 @@ dependencies = [
     "fonttools>=4.59.0",
     "weasyprint>=62.0",
     "rich>=13.0",
+    "psutil>=5.9.0",
 ]
+
+[project.optional-dependencies]
+pdf-merge = ["PyPDF2>=3.0.0"]
 
 [project.scripts]
 fontsampler = "fontsampler.cli:main"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+fonttools = ">=4.59.0,<5"
+pycairo = ">=1.28.0,<2"
+pyinstaller = ">=6.8.0,<7"
+weasyprint = ">=62.0,<63"
+pygobject = ">=3.48.0,<4"
+cairocffi = ">=1.6.0,<2"
+rich = ">=13.0,<14"
+ruff = ">=0.11.0,<1"
+pre-commit = ">=4.1.0,<5"
+psutil = ">=5.9.0,<6"
+
+[tool.pixi.pypi-dependencies]
+fontsampler = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+build = "pyinstaller fontsampler.spec"
+build-clean = "pyinstaller --noconfirm --clean fontsampler.spec"
+build-debug = "pyinstaller --debug all fontsampler.spec"
+clean = "rm -rf dist/ build/"
+clean-all = "rm -rf dist/ build/ .pyinstaller/"
+check-binary = "test -f dist/fontsampler && echo 'Binary found' || echo 'No binary found'"
+copy-binary = "bash -c 'echo \"Copying binary to $HOME/.local/bin/fontsampler\"; cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"
+install-interactive = {cmd = "bash -c 'echo \"No binary found. Choose build type:\"; echo \"1) Standard build (pixi run build)\"; echo \"2) Clean build (pixi run build-clean)\"; echo \"3) Cancel\"; read -p \"Enter choice (1-3): \" choice; case $choice in 1) pixi run build;; 2) pixi run build-clean;; 3) echo \"Installation cancelled\"; exit 0;; *) echo \"Invalid choice\"; exit 1;; esac'"}
+install = {cmd = "bash -c 'if [ -f dist/fontsampler ]; then echo \"Binary found, installing...\"; pixi run copy-binary; else pixi run install-interactive && pixi run copy-binary; fi'"}
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.

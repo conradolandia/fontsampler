@@ -8,10 +8,10 @@ import sys
 
 from rich.panel import Panel
 
-from .config import DEFAULT_OUTPUT, MAX_FONTS
-from .font_discovery import find_fonts
-from .pdf_generation import display_captured_warnings, generate_pdf_with_toc
-from .warning_capture import console
+from .config import DEFAULT_OUTPUT
+from .incremental_pdf import generate_pdf_incremental
+from .streaming_processor import process_fonts_with_streaming
+from .warning_capture import console, display_captured_warnings
 
 
 def create_argument_parser():
@@ -54,11 +54,9 @@ Examples:
     )
 
     parser.add_argument(
-        "-m",
-        "--max-fonts",
-        type=int,
-        default=MAX_FONTS,
-        help=f"Maximum number of fonts to process (default: {MAX_FONTS}, use 0 for unlimited)",
+        "--legacy-mode",
+        action="store_true",
+        help="Use legacy processing mode with hard limits (for compatibility)",
     )
 
     return parser
@@ -81,49 +79,73 @@ def validate_arguments(args):
     return True
 
 
-def process_fonts(args):
-    """Process fonts based on command line arguments."""
-    fonts = find_fonts(args.directory)
-    if not fonts:
-        console.print(
-            f"[bold blue]🔍[/bold blue] No font files (.ttf, .otf) found in '[cyan]{args.directory}[/cyan]'"
-        )
+def process_fonts_streaming(args):
+    """Process fonts using streaming architecture."""
+    # Import legacy processing for compatibility
+    if args.legacy_mode:
+        from .font_discovery import find_fonts
+        from .pdf_generation import generate_pdf_with_toc
+
+        console.print("[yellow]⚠️[/yellow] Using legacy processing mode")
+
+        fonts = find_fonts(args.directory)
+        if not fonts:
+            console.print(
+                f"[bold blue]🔍[/bold blue] No font files (.ttf, .otf) found in '[cyan]{args.directory}[/cyan]'"
+            )
+            return False
+
+        # Apply font limit if specified
+        if args.limit and len(fonts) > args.limit:
+            console.print(
+                f"[bold yellow]📝[/bold yellow] Limiting to first [cyan]{args.limit}[/cyan] fonts (found [cyan]{len(fonts)}[/cyan])"
+            )
+            fonts = fonts[: args.limit]
+
+        generate_pdf_with_toc(fonts, args.output)
+        display_captured_warnings()
+        return True
+
+    # Use new streaming architecture
+    console.print(
+        "[bold blue]🚀[/bold blue] Using streaming architecture with adaptive memory management"
+    )
+
+    try:
+        # Process fonts using streaming
+        font_generator = process_fonts_with_streaming(args.directory)
+
+        # Apply limit if specified (for testing)
+        if args.limit:
+            console.print(
+                f"[bold yellow]📝[/bold yellow] Limiting to first [cyan]{args.limit}[/cyan] fonts for testing"
+            )
+            limited_generator = []
+            for i, font_info in enumerate(font_generator):
+                if i >= args.limit:
+                    break
+                limited_generator.append(font_info)
+
+            if not limited_generator:
+                console.print(
+                    "[bold red]❌[/bold red] No compatible fonts found to generate PDF."
+                )
+                return False
+
+            # Generate PDF from limited fonts
+            generate_pdf_incremental(iter(limited_generator), args.output)
+        else:
+            # Generate PDF from all fonts
+            generate_pdf_incremental(font_generator, args.output)
+
+        # Display any remaining warnings at the end
+        display_captured_warnings()
+
+        return True
+
+    except Exception as e:
+        console.print(f"[bold red]❌[/bold red] Error during processing: {e}")
         return False
-
-    # Apply font limit if specified
-    if args.limit and len(fonts) > args.limit:
-        console.print(
-            f"[bold yellow]📝[/bold yellow] Limiting to first [cyan]{args.limit}[/cyan] fonts (found [cyan]{len(fonts)}[/cyan])"
-        )
-        fonts = fonts[: args.limit]
-
-    # Apply maximum font limit for safety
-    if args.max_fonts > 0 and len(fonts) > args.max_fonts:
-        console.print(
-            f"[bold yellow]⚠️[/bold yellow] Limiting to [cyan]{args.max_fonts}[/cyan] fonts for memory safety (found [cyan]{len(fonts)}[/cyan])"
-        )
-        console.print(
-            "[yellow]💡[/yellow] Use --max-fonts 0 to process all fonts (may cause memory issues)"
-        )
-        fonts = fonts[: args.max_fonts]
-
-    console.print("\n[bold yellow]⚙️[/bold yellow] Starting font processing...")
-
-    # Warn about memory usage for large collections
-    if len(fonts) > MAX_FONTS:
-        console.print(
-            f"[bold yellow]⚠️[/bold yellow] Processing [cyan]{len(fonts)}[/cyan] fonts may require significant memory"
-        )
-        console.print(
-            "[yellow]💡[/yellow] Consider using --max-fonts to limit the number of fonts processed"
-        )
-
-    generate_pdf_with_toc(fonts, args.output)
-
-    # Display any remaining warnings at the end
-    display_captured_warnings()
-
-    return True
 
 
 def main():
@@ -142,5 +164,5 @@ def main():
     if not validate_arguments(args):
         sys.exit(1)
 
-    if not process_fonts(args):
+    if not process_fonts_streaming(args):
         sys.exit(1)
