@@ -17,6 +17,7 @@ from rich.progress import (
 from .config import DEFAULT_BATCH_SIZE, FONT_EXTENSIONS, MEMORY_THRESHOLD
 from .font_discovery import extract_font_info
 from .font_validation import register_font_for_weasyprint, validate_font_with_weasyprint
+from .logging_config import get_logger, log_font_processing, log_memory_usage
 from .memory_utils import (
     MemoryMonitor,
     adaptive_batch_size,
@@ -112,6 +113,7 @@ class StreamingFontProcessor:
         self.valid_fonts = []
         self.rejected_fonts = []
         self.validation_errors = {}
+        self.logger = get_logger("fontsampler.streaming_processor")
 
     def process_fonts_streaming(
         self, font_paths: Generator[str, None, None]
@@ -129,12 +131,30 @@ class StreamingFontProcessor:
         batch_size = self.base_batch_size
 
         with MemoryMonitor("Font Processing") as memory_monitor:
+            # Log initial memory usage
+            initial_memory = get_memory_usage()
+            log_memory_usage(
+                self.logger, "Font processing started", initial_memory, initial_memory
+            )
+
             for font_path in font_paths:
                 current_batch.append(font_path)
 
                 # Process batch when it reaches the current batch size
                 if len(current_batch) >= batch_size:
+                    batch_start_memory = get_memory_usage()
                     yield from self._process_batch(current_batch, memory_monitor)
+                    batch_end_memory = get_memory_usage()
+
+                    # Log memory usage after batch processing
+                    log_memory_usage(
+                        self.logger,
+                        f"Batch processed ({len(current_batch)} fonts)",
+                        batch_start_memory,
+                        batch_end_memory,
+                        memory_monitor.peak_memory,
+                    )
+
                     current_batch.clear()
 
                     # Adjust batch size based on memory usage
@@ -154,7 +174,18 @@ class StreamingFontProcessor:
 
             # Process remaining fonts
             if current_batch:
+                batch_start_memory = get_memory_usage()
                 yield from self._process_batch(current_batch, memory_monitor)
+                batch_end_memory = get_memory_usage()
+
+                # Log memory usage after final batch
+                log_memory_usage(
+                    self.logger,
+                    f"Final batch processed ({len(current_batch)} fonts)",
+                    batch_start_memory,
+                    batch_end_memory,
+                    memory_monitor.peak_memory,
+                )
 
     def _process_batch(
         self, font_paths: List[str], memory_monitor: MemoryMonitor
@@ -191,9 +222,16 @@ class StreamingFontProcessor:
                     # Extract font information
                     font_info = extract_font_info(font_path)
                     if not font_info:
-                        self.rejected_fonts.append(os.path.basename(font_path))
-                        self.validation_errors[os.path.basename(font_path)] = (
+                        font_name = os.path.basename(font_path)
+                        self.rejected_fonts.append(font_name)
+                        self.validation_errors[font_name] = (
                             "Failed to extract font info"
+                        )
+                        log_font_processing(
+                            self.logger,
+                            font_path,
+                            "FAILED",
+                            "Failed to extract font info",
                         )
                         progress.advance(task)
                         continue
@@ -204,6 +242,9 @@ class StreamingFontProcessor:
                         self.rejected_fonts.append(font_info["file"])
                         self.validation_errors[font_info["file"]] = (
                             "Failed to register font"
+                        )
+                        log_font_processing(
+                            self.logger, font_path, "FAILED", "Failed to register font"
                         )
                         progress.advance(task)
                         continue
@@ -216,6 +257,12 @@ class StreamingFontProcessor:
                         font_info["_registered_name"] = font_family
                         self.valid_fonts.append(font_info)
                         self.processed_count += 1
+                        log_font_processing(
+                            self.logger,
+                            font_path,
+                            "SUCCESS",
+                            f"Registered as {font_family}",
+                        )
                         yield font_info
                     else:
                         self.rejected_fonts.append(font_info["file"])
@@ -225,6 +272,9 @@ class StreamingFontProcessor:
                             else str(validation_result)
                         )
                         self.validation_errors[font_info["file"]] = error_msg
+                        log_font_processing(
+                            self.logger, font_path, "VALIDATION_FAILED", error_msg
+                        )
                         console.print(
                             f"  [bold red]❌[/bold red] [red]{font_info['file']}[/red]: {error_msg}"
                         )
@@ -233,6 +283,9 @@ class StreamingFontProcessor:
                     font_name = os.path.basename(font_path)
                     self.rejected_fonts.append(font_name)
                     self.validation_errors[font_name] = f"Unexpected error: {e}"
+                    log_font_processing(
+                        self.logger, font_path, "FAILED", f"Unexpected error: {e}", e
+                    )
                     console.print(
                         f"  [bold red]❌[/bold red] [red]{font_name}[/red]: Unexpected error: {e}"
                     )
@@ -263,6 +316,8 @@ def process_fonts_with_streaming(
     Yields:
         Processed font information dictionaries
     """
+    logger = get_logger("fontsampler.streaming_processor")
+
     # Check memory safety before starting
     font_paths = list(find_fonts_streaming(root_directory))
     font_count = len(font_paths)
@@ -271,6 +326,7 @@ def process_fonts_with_streaming(
         console.print(
             f"[bold blue]🔍[/bold blue] No font files (.ttf, .otf) found in '[cyan]{root_directory}[/cyan]'"
         )
+        logger.warning(f"No font files found in directory: {root_directory}")
         return
 
     # Check memory safety
@@ -280,11 +336,13 @@ def process_fonts_with_streaming(
         console.print(
             "[yellow]💡[/yellow] The processor will use adaptive batching to manage memory usage"
         )
+        logger.warning(f"Memory safety check failed: {warning_msg}")
 
     console.print(
         f"[bold blue]🔍[/bold blue] Total fonts found: [cyan]{font_count}[/cyan]"
     )
     console.print("[bold yellow]⚙️[/bold yellow] Starting streaming font processing...")
+    logger.info(f"Starting font processing - {font_count} fonts found")
 
     # Create streaming processor
     processor = StreamingFontProcessor(base_batch_size=base_batch_size)
@@ -304,4 +362,12 @@ def process_fonts_with_streaming(
     )
     console.print(
         f"[bold yellow]⚠️[/bold yellow] Rejected fonts: [cyan]{stats['rejected_fonts']}[/cyan]"
+    )
+
+    # Log final memory usage
+    final_memory = get_memory_usage()
+    log_memory_usage(logger, "Font processing completed", final_memory, final_memory)
+
+    logger.info(
+        f"Processing complete - Processed: {stats['processed_count']}, Valid: {stats['valid_fonts']}, Rejected: {stats['rejected_fonts']}"
     )

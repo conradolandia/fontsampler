@@ -8,8 +8,9 @@ import sys
 
 from rich.panel import Panel
 
-from .config import DEFAULT_OUTPUT
+from .config import DEFAULT_OUTPUT, LOG_LEVEL
 from .incremental_pdf import generate_pdf_incremental
+from .logging_config import cleanup_old_logs, setup_logging
 from .streaming_processor import process_fonts_with_streaming
 from .warning_capture import console, display_captured_warnings
 
@@ -161,8 +162,17 @@ def main():
     parser = create_argument_parser()
     args = parser.parse_args()
 
+    # Setup logging
+    log_level = "DEBUG" if args.verbose else LOG_LEVEL
+    logger = setup_logging(log_level=log_level)
+
+    # Clean up old logs
+    cleanup_old_logs()
+
     if not validate_arguments(args):
+        logger.error(f"Invalid arguments: directory={args.directory}")
         sys.exit(1)
 
     if not process_fonts_streaming(args):
+        logger.error("Font processing failed")
         sys.exit(1)

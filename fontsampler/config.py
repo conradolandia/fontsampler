@@ -2,6 +2,8 @@
 Configuration constants for FontSampler.
 """
 
+from pathlib import Path
+
 # Sample text for font display
 SAMPLE_TEXT = "Sphinx of black quartz, judge my vow!"
 
@@ -25,6 +27,12 @@ MAX_BATCH_SIZE = 200
 MIN_BATCH_SIZE = 10
 MEMORY_THRESHOLD = 0.7  # 70% memory usage threshold
 ESTIMATED_MEMORY_PER_FONT = 5.0  # MB per font
+
+# Logging settings
+LOG_LEVEL = "INFO"
+LOG_FILE = None  # None for default location
+LOG_MAX_AGE_DAYS = 30  # Keep logs for 30 days
+LOG_DIR = Path.cwd() / "logs"
 
 # Legacy settings (for backward compatibility)
 LEGACY_MAX_FONTS = 1000

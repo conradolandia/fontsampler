@@ -10,6 +10,7 @@ from weasyprint import CSS, HTML
 from weasyprint.text.fonts import FontConfiguration
 
 from .config import PARAGRAPH, SAMPLE_TEXT
+from .logging_config import get_logger, log_memory_usage, log_pdf_generation
 from .memory_utils import MemoryMonitor, force_garbage_collection
 from .warning_capture import (
     capture_warnings_context,
@@ -28,6 +29,8 @@ def generate_pdf_incremental(
         font_generator: Generator yielding font information dictionaries
         output_path: Output PDF file path
     """
+    logger = get_logger("fontsampler.pdf_generation")
+
     with MemoryMonitor("PDF Generation") as memory_monitor:
         # Collect all fonts first
         fonts = []
@@ -45,6 +48,7 @@ def generate_pdf_incremental(
 
         if not fonts:
             console.print("[red]❌[/red] No fonts found")
+            logger.warning("No fonts found for PDF generation")
             return
 
         # Sort fonts alphabetically
@@ -52,6 +56,7 @@ def generate_pdf_incremental(
 
         # Generate PDF with ToC
         console.print("[yellow]📄[/yellow] Generating PDF with table of contents...")
+        log_pdf_generation(logger, "START", f"Output: {output_path}", font_count)
 
         try:
             html_content = _create_html_with_toc(fonts)
@@ -83,6 +88,16 @@ def generate_pdf_incremental(
                         html.write_pdf(
                             output_path, stylesheets=[css], font_config=font_config
                         )
+                        log_pdf_generation(
+                            logger,
+                            "COMPLETE",
+                            f"PDF generated successfully: {output_path}",
+                        )
+                    except Exception as e:
+                        log_pdf_generation(
+                            logger, "ERROR", f"PDF generation failed: {e}", error=e
+                        )
+                        raise
                     finally:
                         # Process captured stderr
                         stderr_output = stderr_capture.getvalue()
@@ -110,6 +125,15 @@ def generate_pdf_incremental(
         stats = memory_monitor.get_stats()
         console.print(
             f"[blue]📊[/blue] Memory usage: {stats['peak_increase']:.1f}MB peak increase"
+        )
+
+        # Log memory usage
+        log_memory_usage(
+            logger,
+            "PDF Generation",
+            stats["start_memory"],
+            stats["current_memory"],
+            stats["peak_memory"],
         )
 
 
