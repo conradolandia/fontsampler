@@ -156,6 +156,45 @@ This structure follows [Python packaging best practices](https://pythonpackaging
 - **Testable**: Easy to add unit tests
 - **Importable**: Can be used as a library in other projects
 
+## Development
+
+This project uses [Pixi](https://pixi.sh/) for dependency management and environment setup.
+
+### Setup
+
+1. Install Pixi: https://pixi.sh/install
+2. Clone the repository
+3. Run `pixi install` to set up the environment
+4. Run `pixi run python main.py --help` to test the installation
+
+### Code Quality
+
+The project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting, with [pre-commit](https://pre-commit.com/) hooks for automated code quality checks.
+
+#### Pre-commit Hooks
+
+The following hooks run automatically on every commit:
+- **Ruff linting**: Catches code quality issues and potential bugs
+- **Ruff formatting**: Ensures consistent code formatting
+- **Trailing whitespace**: Removes trailing whitespace
+- **End of file**: Ensures files end with newline
+- **YAML validation**: Validates YAML files
+- **Large files**: Prevents accidentally committing large files
+- **Merge conflicts**: Detects unresolved merge conflicts
+
+#### Manual Code Quality Checks
+
+```bash
+# Run linting
+pixi run ruff check .
+
+# Run formatting
+pixi run ruff format .
+
+# Run all pre-commit hooks manually
+pixi run pre-commit run --all-files
+```
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
