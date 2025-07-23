@@ -7,8 +7,8 @@ from PyInstaller.utils.hooks import collect_dynamic_libs
 cairo_libs = collect_dynamic_libs('cairocffi')
 
 a = Analysis(
-    ['fontsampler.py'],
-    pathex=[],
+    ['main.py'],
+    pathex=['.', 'fontsampler'],
     binaries=cairo_libs,
     datas=[],
     hiddenimports=[
@@ -58,6 +58,13 @@ a = Analysis(
         'rich.spinner',
         'rich.status',
         'rich.tree',
+        'fontsampler',
+        'fontsampler.config',
+        'fontsampler.warning_capture',
+        'fontsampler.font_discovery',
+        'fontsampler.font_validation',
+        'fontsampler.pdf_generation',
+        'fontsampler.cli',
     ],
     hookspath=[],
     hooksconfig={},

@@ -52,14 +52,30 @@ sudo dnf install cairo-devel
 
 ## Usage
 
+### Command Line
+
 ```bash
-pixi run python fontsampler.py <directory_path>
+pixi run python main.py <directory_path>
 ```
 
 ### Example
 
 ```bash
-pixi run python fontsampler.py /usr/share/fonts
+pixi run python main.py /usr/share/fonts
+```
+
+### As a Library
+
+The package can also be used as a library in other Python projects:
+
+```python
+from fontsampler import find_fonts, generate_pdf_with_toc
+
+# Find fonts in a directory
+fonts = find_fonts("/path/to/fonts")
+
+# Generate PDF catalog
+generate_pdf_with_toc(fonts, "output.pdf")
 ```
 
 This will scan the specified directory for fonts and generate a `font_samples.pdf` file in the current directory.
@@ -112,6 +128,34 @@ This version uses WeasyPrint with Cairo and Pango for font rendering, providing:
 - **Font feature support**: Automatic detection of bold, italic, and other variants
 - **PDF generation**: High-quality PDF output using Cairo graphics library
 
+## Project Structure
+
+The project follows modern Python package structure best practices:
+
+```
+fontsampler/
+├── main.py                 # Entry point
+├── fontsampler/            # Main package directory
+│   ├── __init__.py         # Package initialization
+│   ├── config.py           # Configuration constants
+│   ├── warning_capture.py  # Warning capture and display
+│   ├── font_discovery.py   # Font finding and metadata
+│   ├── font_validation.py  # Font validation and registration
+│   ├── pdf_generation.py   # HTML/CSS generation and PDF creation
+│   └── cli.py              # Command-line interface
+├── dist/                   # Build output
+├── build/                  # Build artifacts
+├── pixi.toml              # Dependency management
+├── fontsampler.spec       # PyInstaller configuration
+└── README.md              # Documentation
+```
+
+This structure follows [Python packaging best practices](https://pythonpackaging.info/02-Package-Structure.html) and makes the codebase:
+- **Professional**: Proper package structure for distribution
+- **Maintainable**: Clear separation of concerns
+- **Testable**: Easy to add unit tests
+- **Importable**: Can be used as a library in other projects
+
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
