@@ -1,6 +1,10 @@
 # Font Sampler
 
-A Python script that generates PDF samples of fonts found in a directory. The script creates a font catalog with metadata, sample text at different sizes, and a table of contents.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Pixi](https://img.shields.io/badge/Pixi-Enabled-green.svg)](https://pixi.sh/)
+
+A Python tool that generates PDF samples of fonts found in a directory. Creates a comprehensive font catalog with metadata, sample text at different sizes, and a table of contents using streaming architecture for efficient memory management.
 
 ## Features
 
@@ -12,31 +16,31 @@ A Python script that generates PDF samples of fonts found in a directory. The sc
 - **Table of Contents**: Generated automatically with page numbers
 - **Font Support**: Uses WeasyPrint with Pango for TrueType, OpenType and PostScript font support
 - **Rich UI**: Enhanced visual output with progress bars, colored status messages, and real-time feedback
+- **Streaming Architecture**: Efficient memory management for processing large font collections
+- **Memory Monitoring**: Adaptive batch processing with automatic garbage collection
 
 ## Requirements
 
 - [Pixi](https://pixi.sh/) for dependency management
-- Python 3.6+
-- **System Libraries**: Cairo graphics library (required by WeasyPrint for PDF generation)
+- Python 3.8+
+- **System Libraries**: Cairo graphics library, Pango text layout, GLib core library, and FontConfig (required by WeasyPrint for PDF generation)
+
+### Python Dependencies
+
+The project uses the following key Python packages:
+- **fonttools**: Font metadata extraction and manipulation
+- **weasyprint**: PDF generation with advanced font support
+- **rich**: Enhanced terminal UI with progress bars and colored output
+- **psutil**: System resource monitoring and memory management
 
 ### System Dependencies
 
-On most Linux distributions, Cairo is included by default. If you encounter issues, you may need to install it:
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install libcairo2-dev
-```
-
-**Arch Linux:**
-```bash
-sudo pacman -S cairo
-```
-
-**Fedora/RHEL:**
-```bash
-sudo dnf install cairo-devel
-```
+Pixi automatically handles all system dependencies through conda-forge. The following libraries are included automatically:
+- **Cairo**: Graphics library for PDF generation
+- **Pango**: Text layout and font rendering
+- **GLib**: Core system library
+- **FontConfig**: Font discovery and configuration
+- **PyGObject**: Python bindings for GObject introspection (provides access to Pango, Cairo, GLib)
 
 ## Installation
 
@@ -54,31 +58,54 @@ sudo dnf install cairo-devel
 
 ### Command Line
 
-```bash
-pixi run python main.py <directory_path>
-```
-
-### Example
+The main entry point is the `fontsampler` command:
 
 ```bash
-pixi run python main.py /usr/share/fonts
+pixi run fontsampler <directory_path> [options]
 ```
+
+### Examples
+
+Basic usage:
+```bash
+pixi run fontsampler /usr/share/fonts
+```
+
+Custom output filename:
+```bash
+pixi run fontsampler ~/fonts -o my_samples.pdf
+```
+
+Limit fonts for testing:
+```bash
+pixi run fontsampler . -l 10
+```
+
+Verbose output:
+```bash
+pixi run fontsampler /usr/share/fonts -v
+```
+
+### Command Line Options
+
+- `directory`: Directory containing font files (.ttf, .otf) **[required]**
+- `-o, --output`: Output PDF filename (default: `font_samples.pdf`)
+- `-v, --verbose`: Show detailed information about font processing
+- `-l, --limit`: Limit the number of fonts to process (useful for testing)
+- `-h, --help`: Show help message
 
 ### As a Library
 
 The package can also be used as a library in other Python projects:
 
 ```python
-from fontsampler import find_fonts, generate_pdf_with_toc
+from fontsampler import extract_font_info
 
-# Find fonts in a directory
-fonts = find_fonts("/path/to/fonts")
-
-# Generate PDF catalog
-generate_pdf_with_toc(fonts, "output.pdf")
+# Extract font information
+font_info = extract_font_info("/path/to/font.ttf")
+print(f"Font: {font_info['name']}")
+print(f"Family: {font_info['family']}")
 ```
-
-This will scan the specified directory for fonts and generate a `font_samples.pdf` file in the current directory.
 
 ## Building Standalone Binary
 
@@ -114,7 +141,7 @@ The generated PDF contains:
 
 ## Sample Text
 
-The script uses the pangram "Sphinx of black quartz, judge my vow!" for font samples, plus a comprehensive character set including:
+Default configuration includes the pangram "Sphinx of black quartz, judge my vow!" for font samples, plus a comprehensive character set including:
 - Uppercase and lowercase letters
 - Numbers 0-9
 - Special characters and symbols
@@ -128,26 +155,40 @@ This version uses WeasyPrint with Cairo and Pango for font rendering, providing:
 - **Font feature support**: Automatic detection of bold, italic, and other variants
 - **PDF generation**: High-quality PDF output using Cairo graphics library
 
+## Architecture
+
+The project uses a streaming architecture for efficient memory management:
+
+- **Streaming Font Discovery**: Fonts are discovered and processed one at a time
+- **Adaptive Memory Management**: Automatic garbage collection and memory monitoring
+- **Batch Processing**: Configurable batch sizes based on available memory
+- **Progress Tracking**: Real-time progress bars and status updates
+
 ## Project Structure
 
 The project follows modern Python package structure best practices:
 
 ```
 fontsampler/
-├── main.py                 # Entry point
 ├── fontsampler/            # Main package directory
 │   ├── __init__.py         # Package initialization
+│   ├── cli.py              # Command-line interface
 │   ├── config.py           # Configuration constants
 │   ├── warning_capture.py  # Warning capture and display
 │   ├── font_discovery.py   # Font finding and metadata
 │   ├── font_validation.py  # Font validation and registration
 │   ├── pdf_generation.py   # HTML/CSS generation and PDF creation
-│   └── cli.py              # Command-line interface
+│   ├── incremental_pdf.py  # Incremental PDF generation
+│   ├── streaming_processor.py # Streaming font processing
+│   ├── memory_utils.py     # Memory management utilities
+│   └── logging_config.py   # Logging configuration
+├── docs/                   # Detailed documentation
 ├── dist/                   # Build output
 ├── build/                  # Build artifacts
-├── pixi.toml              # Dependency management
-├── fontsampler.spec       # PyInstaller configuration
-└── README.md              # Documentation
+├── pyproject.toml          # Dependency and task management
+├── fontsampler.spec        # PyInstaller configuration
+├── .pre-commit-config.yaml # Pre-commit hooks
+└── README.md               # Main documentation
 ```
 
 This structure follows [Python packaging best practices](https://pythonpackaging.info/02-Package-Structure.html) and makes the codebase:
@@ -164,8 +205,7 @@ This project uses [Pixi](https://pixi.sh/) for dependency management and environ
 
 1. Install Pixi: https://pixi.sh/install
 2. Clone the repository
-3. Run `pixi install` to set up the environment
-4. Run `pixi run python main.py --help` to test the installation
+3. Run `pixi install`
 
 ### Code Quality
 
@@ -195,6 +235,45 @@ pixi run ruff format .
 pixi run pre-commit run --all-files
 ```
 
+## Troubleshooting
+
+### Common Issues
+
+**No fonts found**: Ensure the directory contains `.ttf` or `.otf` files and you have read permissions.
+
+**Memory issues**: The streaming architecture should handle large font collections automatically. If you encounter memory issues, try using the `-l` option to limit the number of fonts processed.
+
+**Font rendering issues**: Some fonts may not render correctly due to format incompatibilities. The tool will skip problematic fonts and report them in the output.
+
+### Getting Help
+
+If you encounter issues not covered here:
+1. Check the verbose output with `-v` flag
+2. Review the logs in the `logs/` directory
+3. Open an issue on the project repository
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### Development Setup
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run the pre-commit hooks: `pixi run pre-commit run --all-files`
+5. Submit a pull request
+
+## Citation
+
+If you use this tool in your research or projects, please cite it as:
+
+```
+FontSampler: A Python tool for generating PDF font catalogs
+Version 0.1.0
+https://github.com/your-repo/fontsampler
+```

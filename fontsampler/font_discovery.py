@@ -7,15 +7,7 @@ import sys
 from io import StringIO
 
 from fontTools.ttLib import TTFont
-from rich.progress import (
-    BarColumn,
-    Progress,
-    TaskProgressColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
 
-from .config import FONT_EXTENSIONS
 from .warning_capture import capture_warnings_context, console
 
 
@@ -90,38 +82,3 @@ def extract_font_info(path):
             f"  [bold red]❌[/bold red] Failed to parse font [red]{os.path.basename(path)}[/red]: {e}"
         )
         return None
-
-
-def find_fonts(root):
-    """Find all font files in directory tree."""
-    fonts = []
-    dir_count = 0
-    font_count = 0
-
-    console.print(f"[bold blue]🔍[/bold blue] Scanning directory: [cyan]{root}[/cyan]")
-
-    # First pass to count total directories for progress bar
-    total_dirs = sum(1 for _ in os.walk(root))
-
-    with Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
-        task = progress.add_task("[cyan]Scanning directories...", total=total_dirs)
-
-        for dirpath, _, filenames in os.walk(root):
-            dir_count += 1
-            progress.update(task, advance=1)
-
-            for f in filenames:
-                if f.lower().endswith(FONT_EXTENSIONS):
-                    font_count += 1
-                    fonts.append(os.path.join(dirpath, f))
-
-    console.print(
-        f"[bold green]✅[/bold green] Directory scan complete: [cyan]{dir_count}[/cyan] directories, [cyan]{font_count}[/cyan] fonts found"
-    )
-    return fonts

@@ -304,13 +304,16 @@ class StreamingFontProcessor:
 
 
 def process_fonts_with_streaming(
-    root_directory: str, base_batch_size: int = DEFAULT_BATCH_SIZE
+    root_directory: str = None,
+    font_paths: List[str] = None,
+    base_batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> Generator[Dict[str, Any], None, None]:
     """
     High-level function to process fonts using streaming architecture.
 
     Args:
-        root_directory: Directory containing fonts
+        root_directory: Directory containing fonts (if font_paths not provided)
+        font_paths: List of font file paths to process (if provided, overrides root_directory)
         base_batch_size: Base batch size for processing
 
     Yields:
@@ -318,15 +321,30 @@ def process_fonts_with_streaming(
     """
     logger = get_logger("fontsampler.streaming_processor")
 
-    # Check memory safety before starting
-    font_paths = list(find_fonts_streaming(root_directory))
-    font_count = len(font_paths)
+    # Determine font paths
+    if font_paths is not None:
+        # Use provided font paths
+        paths = font_paths
+        font_count = len(paths)
+        console.print(
+            f"[bold blue]🔍[/bold blue] Total fonts to process: [cyan]{font_count}[/cyan]"
+        )
+    else:
+        # Discover fonts from directory
+        paths = list(find_fonts_streaming(root_directory))
+        font_count = len(paths)
 
     if font_count == 0:
-        console.print(
-            f"[bold blue]🔍[/bold blue] No font files (.ttf, .otf) found in '[cyan]{root_directory}[/cyan]'"
-        )
-        logger.warning(f"No font files found in directory: {root_directory}")
+        if font_paths is not None:
+            console.print(
+                "[bold blue]🔍[/bold blue] No font files provided for processing"
+            )
+            logger.warning("No font files provided for processing")
+        else:
+            console.print(
+                f"[bold blue]🔍[/bold blue] No font files (.ttf, .otf) found in '[cyan]{root_directory}[/cyan]'"
+            )
+            logger.warning(f"No font files found in directory: {root_directory}")
         return
 
     # Check memory safety
@@ -338,17 +356,21 @@ def process_fonts_with_streaming(
         )
         logger.warning(f"Memory safety check failed: {warning_msg}")
 
-    console.print(
-        f"[bold blue]🔍[/bold blue] Total fonts found: [cyan]{font_count}[/cyan]"
-    )
+    if font_paths is None:
+        console.print(
+            f"[bold blue]🔍[/bold blue] Total fonts found: [cyan]{font_count}[/cyan]"
+        )
+
     console.print("[bold yellow]⚙️[/bold yellow] Starting streaming font processing...")
-    logger.info(f"Starting font processing - {font_count} fonts found")
+    logger.info(
+        f"Starting font processing - {font_count} fonts {'provided' if font_paths else 'found'}"
+    )
 
     # Create streaming processor
     processor = StreamingFontProcessor(base_batch_size=base_batch_size)
 
     # Process fonts using generator
-    font_generator = (path for path in font_paths)
+    font_generator = (path for path in paths)
     yield from processor.process_fonts_streaming(font_generator)
 
     # Display final statistics

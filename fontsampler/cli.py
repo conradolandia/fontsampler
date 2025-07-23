@@ -11,7 +11,7 @@ from rich.panel import Panel
 from .config import DEFAULT_OUTPUT, LOG_LEVEL
 from .incremental_pdf import generate_pdf_incremental
 from .logging_config import cleanup_old_logs, setup_logging
-from .streaming_processor import process_fonts_with_streaming
+from .streaming_processor import find_fonts_streaming, process_fonts_with_streaming
 from .warning_capture import console, display_captured_warnings
 
 
@@ -54,12 +54,6 @@ Examples:
         help="Limit the number of fonts to process (useful for testing)",
     )
 
-    parser.add_argument(
-        "--legacy-mode",
-        action="store_true",
-        help="Use legacy processing mode with hard limits (for compatibility)",
-    )
-
     return parser
 
 
@@ -82,61 +76,26 @@ def validate_arguments(args):
 
 def process_fonts_streaming(args):
     """Process fonts using streaming architecture."""
-    # Import legacy processing for compatibility
-    if args.legacy_mode:
-        from .font_discovery import find_fonts
-        from .pdf_generation import generate_pdf_with_toc
-
-        console.print("[yellow]⚠️[/yellow] Using legacy processing mode")
-
-        fonts = find_fonts(args.directory)
-        if not fonts:
-            console.print(
-                f"[bold blue]🔍[/bold blue] No font files (.ttf, .otf) found in '[cyan]{args.directory}[/cyan]'"
-            )
-            return False
-
-        # Apply font limit if specified
-        if args.limit and len(fonts) > args.limit:
-            console.print(
-                f"[bold yellow]📝[/bold yellow] Limiting to first [cyan]{args.limit}[/cyan] fonts (found [cyan]{len(fonts)}[/cyan])"
-            )
-            fonts = fonts[: args.limit]
-
-        generate_pdf_with_toc(fonts, args.output)
-        display_captured_warnings()
-        return True
-
-    # Use new streaming architecture
-    console.print(
-        "[bold blue]🚀[/bold blue] Using streaming architecture with adaptive memory management"
-    )
-
     try:
-        # Process fonts using streaming
-        font_generator = process_fonts_with_streaming(args.directory)
-
         # Apply limit if specified (for testing)
         if args.limit:
             console.print(
                 f"[bold yellow]📝[/bold yellow] Limiting to first [cyan]{args.limit}[/cyan] fonts for testing"
             )
-            limited_generator = []
-            for i, font_info in enumerate(font_generator):
-                if i >= args.limit:
-                    break
-                limited_generator.append(font_info)
+            # Limit font paths at discovery level
+            font_paths = list(find_fonts_streaming(args.directory))
+            limited_paths = font_paths[: args.limit]
 
-            if not limited_generator:
-                console.print(
-                    "[bold red]❌[/bold red] No compatible fonts found to generate PDF."
-                )
+            if not limited_paths:
+                console.print("[bold red]❌[/bold red] No font files found to process.")
                 return False
 
-            # Generate PDF from limited fonts
-            generate_pdf_incremental(iter(limited_generator), args.output)
+            # Process limited font paths
+            font_generator = process_fonts_with_streaming(font_paths=limited_paths)
+            generate_pdf_incremental(font_generator, args.output)
         else:
-            # Generate PDF from all fonts
+            # Process all fonts
+            font_generator = process_fonts_with_streaming(args.directory)
             generate_pdf_incremental(font_generator, args.output)
 
         # Display any remaining warnings at the end

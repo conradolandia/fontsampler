@@ -375,13 +375,12 @@ packages:
 - pypi: ./
   name: fontsampler
   version: 0.1.0
-  sha256: ea14c6bc87bab79294bb6926ffd4e2cadadcfe3123ea108e1af42ca676bf34b3
+  sha256: 5d63800703a6c57c52075fd8a9ceded71279132913ac33316822030e213efc99
   requires_dist:
   - fonttools>=4.59.0
   - weasyprint>=62.0
   - rich>=13.0
   - psutil>=5.9.0
-  - pypdf2>=3.0.0 ; extra == 'pdf-merge'
   requires_python: '>=3.8'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/fonttools-4.59.0-py312h8a5da7c_0.conda

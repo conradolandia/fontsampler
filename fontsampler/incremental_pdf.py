@@ -9,7 +9,7 @@ from typing import Any, Dict, Generator
 from weasyprint import CSS, HTML
 from weasyprint.text.fonts import FontConfiguration
 
-from .config import PARAGRAPH, SAMPLE_TEXT
+from .config import PARAGRAPH, PROCESSING_INTERVAL, SAMPLE_TEXT, UPDATE_INTERVAL
 from .logging_config import get_logger, log_memory_usage, log_pdf_generation
 from .memory_utils import MemoryMonitor, force_garbage_collection
 from .warning_capture import (
@@ -40,9 +40,11 @@ def generate_pdf_incremental(
             fonts.append(font_info)
             font_count += 1
 
-            if font_count % 100 == 0:
-                console.print(f"[blue]📊[/blue] Processed {font_count} fonts...")
+            if font_count % UPDATE_INTERVAL == 0:
                 memory_monitor.update_peak()
+
+            if font_count % PROCESSING_INTERVAL == 0:
+                console.print(f"[blue]📊[/blue] Processed {font_count} fonts...")
 
         console.print(f"[blue]📊[/blue] Total fonts processed: {font_count}")
 
@@ -55,7 +57,7 @@ def generate_pdf_incremental(
         fonts.sort(key=lambda x: x["file"].lower())
 
         # Generate PDF with ToC
-        console.print("[yellow]📄[/yellow] Generating PDF with table of contents...")
+        console.print("[yellow]📄[/yellow] Starting PDF generation...")
         log_pdf_generation(logger, "START", f"Output: {output_path}", font_count)
 
         try:
@@ -66,17 +68,7 @@ def generate_pdf_incremental(
             html = HTML(string=html_content)
             css = CSS(string=css_content, font_config=font_config)
 
-            # Start progress for PDF generation with spinner
-            from rich.progress import Progress, SpinnerColumn, TextColumn
-
-            progress = Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            )
-            task = progress.add_task("[cyan]Generating PDF...", total=1)
-
-            with progress:
+            with console.status("[cyan]Generating PDF..."):
                 # Capture warnings and stderr for the final PDF generation
                 with capture_warnings_context():
                     # Also capture stderr for WeasyPrint warnings
@@ -108,7 +100,6 @@ def generate_pdf_incremental(
 
                         # Restore stderr
                         sys.stderr = original_stderr
-                        progress.update(task, advance=1)
 
             console.print(
                 f"[green]✅[/green] PDF generated: [cyan]{output_path}[/cyan]"

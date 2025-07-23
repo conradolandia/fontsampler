@@ -25,15 +25,15 @@ FONT_EXTENSIONS = (".ttf", ".otf")
 DEFAULT_BATCH_SIZE = 50
 MAX_BATCH_SIZE = 200
 MIN_BATCH_SIZE = 10
+UPDATE_INTERVAL = 100  # Update peak memory every 100 fonts
+PROCESSING_INTERVAL = 500  # Process fonts every 500 fonts
 MEMORY_THRESHOLD = 0.7  # 70% memory usage threshold
 ESTIMATED_MEMORY_PER_FONT = 5.0  # MB per font
+
+# PDF generation settings
 
 # Logging settings
 LOG_LEVEL = "INFO"
 LOG_FILE = None  # None for default location
 LOG_MAX_AGE_DAYS = 30  # Keep logs for 30 days
 LOG_DIR = Path.cwd() / "logs"
-
-# Legacy settings (for backward compatibility)
-LEGACY_MAX_FONTS = 1000
-LEGACY_BATCH_SIZE = 100
