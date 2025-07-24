@@ -274,6 +274,12 @@ PDF_METADATA_FONT_SIZE = _config.get("pdf.metadata_font_size", "12px")
 PDF_SAMPLE_TEXT_LINE_HEIGHT = _config.get("pdf.sample_text_line_height", 1.2)
 PDF_PARAGRAPH_LINE_HEIGHT = _config.get("pdf.paragraph_line_height", 1.4)
 
+# PDF font processing settings
+PDF_FONT_SUBSETTING = _config.get("pdf.font_subsetting", "auto")
+PDF_RETRY_WITHOUT_SUBSETTING = _config.get("pdf.retry_without_subsetting", True)
+PDF_SKIP_PROBLEMATIC_FONTS = _config.get("pdf.skip_problematic_fonts", True)
+PDF_MIN_FONT_SIZE_BYTES = _config.get("pdf.min_font_size_bytes", 1024)
+
 # UI settings
 UI_SHOW_PROGRESS = _config.get("ui.show_progress", True)
 UI_PROGRESS_UPDATE_INTERVAL = _config.get("ui.progress_update_interval", 100)

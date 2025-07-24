@@ -64,6 +64,27 @@ Examples:
         help="Testing scenario for sample text (default: default)",
     )
 
+    parser.add_argument(
+        "--font-subsetting",
+        choices=["auto", "enabled", "disabled"],
+        default="auto",
+        help="Font subsetting behavior: auto (default), enabled, or disabled",
+    )
+
+    parser.add_argument(
+        "--skip-problematic-fonts",
+        action="store_true",
+        default=None,
+        help="Skip problematic fonts and continue processing (overrides config)",
+    )
+
+    parser.add_argument(
+        "--no-skip-problematic-fonts",
+        action="store_true",
+        default=None,
+        help="Stop processing when problematic fonts are encountered (overrides config)",
+    )
+
     return parser
 
 
@@ -93,6 +114,25 @@ def process_fonts_streaming(args):
                 f"[bold blue]📝[/bold blue] Using [cyan]{args.scenario}[/cyan] testing scenario"
             )
 
+        # Show font subsetting setting if not auto
+        if args.font_subsetting != "auto":
+            console.print(
+                f"[bold blue]🔧[/bold blue] Font subsetting: [cyan]{args.font_subsetting}[/cyan]"
+            )
+
+        # Determine skip_problematic_fonts setting
+        skip_problematic_fonts = None
+        if args.skip_problematic_fonts:
+            skip_problematic_fonts = True
+            console.print(
+                "[bold blue]🔧[/bold blue] Font processing: [cyan]skip problematic fonts[/cyan]"
+            )
+        elif args.no_skip_problematic_fonts:
+            skip_problematic_fonts = False
+            console.print(
+                "[bold blue]🔧[/bold blue] Font processing: [cyan]stop on problematic fonts[/cyan]"
+            )
+
         # Apply limit if specified (for testing)
         if args.limit:
             console.print(
@@ -107,12 +147,20 @@ def process_fonts_streaming(args):
                 return False
 
             # Process limited font paths
-            font_generator = process_fonts_with_streaming(font_paths=limited_paths)
-            generate_pdf_incremental(font_generator, args.output, args.scenario)
+            font_generator = process_fonts_with_streaming(
+                font_paths=limited_paths, skip_problematic_fonts=skip_problematic_fonts
+            )
+            generate_pdf_incremental(
+                font_generator, args.output, args.scenario, args.font_subsetting
+            )
         else:
             # Process all fonts
-            font_generator = process_fonts_with_streaming(args.directory)
-            generate_pdf_incremental(font_generator, args.output, args.scenario)
+            font_generator = process_fonts_with_streaming(
+                args.directory, skip_problematic_fonts=skip_problematic_fonts
+            )
+            generate_pdf_incremental(
+                font_generator, args.output, args.scenario, args.font_subsetting
+            )
 
         # Display any remaining warnings at the end
         display_captured_warnings()

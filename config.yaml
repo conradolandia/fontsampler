@@ -81,6 +81,12 @@ pdf:
   sample_text_line_height: 1.2
   paragraph_line_height: 1.4
 
+  # Font processing settings
+  font_subsetting: "auto"  # Options: "auto", "enabled", "disabled"
+  retry_without_subsetting: true  # Retry PDF generation without subsetting if it fails
+  skip_problematic_fonts: true  # Skip fonts that cause validation errors
+  min_font_size_bytes: 1024  # Minimum font file size in bytes (files smaller than this are considered corrupted)
+
 # Logging configuration
 logging:
   # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)

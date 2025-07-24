@@ -245,6 +245,67 @@ def log_pdf_generation(
             logger.exception("PDF generation exception")
 
 
+def log_pdf_font_issue(
+    logger: logging.Logger,
+    font_names: list,
+    issue_type: str,
+    error_message: str,
+    stage: str = "PDF_GENERATION",
+):
+    """
+    Log font-related issues during PDF generation.
+
+    Args:
+        logger: Logger instance
+        font_names: List of font names causing issues
+        issue_type: Type of issue (subsetting, validation, embedding, etc.)
+        error_message: Detailed error message
+        stage: Processing stage where the issue occurred
+    """
+    if not font_names:
+        return
+
+    # Log individual font issues
+    for font_name in font_names:
+        logger.warning(
+            f"Font issue during {stage}: {font_name} - {issue_type}: {error_message}"
+        )
+
+    # Log summary if multiple fonts are affected
+    if len(font_names) > 1:
+        logger.warning(
+            f"Multiple fonts affected during {stage}: {len(font_names)} fonts with {issue_type} issues"
+        )
+        logger.debug(f"Affected fonts: {', '.join(font_names)}")
+
+
+def log_pdf_font_optimization_retry(
+    logger: logging.Logger,
+    error_message: str,
+    retry_success: bool = None,
+    retry_error: str = None,
+):
+    """
+    Log font optimization retry attempts during PDF generation.
+
+    Args:
+        logger: Logger instance
+        error_message: Original error message that triggered retry
+        retry_success: Whether the retry was successful
+        retry_error: Error message from retry attempt if it failed
+    """
+    logger.warning(f"Font optimization retry triggered: {error_message}")
+
+    if retry_success is True:
+        logger.info(
+            "Font optimization retry successful - PDF generated without subsetting"
+        )
+    elif retry_success is False:
+        logger.error(f"Font optimization retry failed: {retry_error}")
+    else:
+        logger.debug("Font optimization retry in progress")
+
+
 def cleanup_old_logs(max_age_days: int = LOG_MAX_AGE_DAYS):
     """
     Clean up old log files.

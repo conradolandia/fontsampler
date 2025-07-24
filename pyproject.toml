@@ -3,7 +3,7 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=61.0", "wheel"]
 
 [project]
-authors = [{name = "conradolandia", email = "andresconrado@gmail.com"}]
+authors = [{name = "Andrés Conrado Montoya (@conradolandia)", email = "andresconrado@gmail.com"}]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
@@ -80,7 +80,6 @@ clean = "rm -rf dist/ build/"
 clean-all = "rm -rf dist/ build/ .pyinstaller/"
 copy-binary = "bash -c 'echo \"Copying binary to $HOME/.local/bin/fontsampler\"; cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"
 format = "ruff format ."
-format-fix = "ruff format --fix ."
 install = {cmd = "bash -c 'if [ -f dist/fontsampler ]; then echo \"Binary found, installing...\"; pixi run copy-binary; else pixi run install-interactive && pixi run copy-binary; fi'"}
 install-interactive = {cmd = "bash -c 'echo \"No binary found. Choose build type:\"; echo \"1) Standard build (pixi run build)\"; echo \"2) Clean build (pixi run build-clean)\"; echo \"3) Cancel\"; read -p \"Enter choice (1-3): \" choice; case $choice in 1) pixi run build;; 2) pixi run build-clean;; 3) echo \"Installation cancelled\"; exit 0;; *) echo \"Invalid choice\"; exit 1;; esac'"}
 lint = "ruff check ."

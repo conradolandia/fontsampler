@@ -14,7 +14,12 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from .config import DEFAULT_BATCH_SIZE, FONT_EXTENSIONS, MEMORY_THRESHOLD
+from .config import (
+    DEFAULT_BATCH_SIZE,
+    FONT_EXTENSIONS,
+    MEMORY_THRESHOLD,
+    PDF_SKIP_PROBLEMATIC_FONTS,
+)
 from .font_discovery import extract_font_info
 from .font_validation import register_font_for_weasyprint, validate_font_with_weasyprint
 from .logging_config import get_logger, log_font_processing, log_memory_usage
@@ -106,9 +111,15 @@ class StreamingFontProcessor:
         self,
         base_batch_size: int = DEFAULT_BATCH_SIZE,
         memory_threshold: float = MEMORY_THRESHOLD,
+        skip_problematic_fonts: bool = None,
     ):
         self.base_batch_size = base_batch_size
         self.memory_threshold = memory_threshold
+        self.skip_problematic_fonts = (
+            skip_problematic_fonts
+            if skip_problematic_fonts is not None
+            else PDF_SKIP_PROBLEMATIC_FONTS
+        )
         self.processed_count = 0
         self.valid_fonts = []
         self.rejected_fonts = []
@@ -281,9 +292,23 @@ class StreamingFontProcessor:
                         log_font_processing(
                             self.logger, font_path, "VALIDATION_FAILED", error_msg
                         )
-                        console.print(
-                            f"  [bold red]❌[/bold red] [red]{font_info['file']}[/red]: {error_msg}"
-                        )
+
+                        if self.skip_problematic_fonts:
+                            # Skip problematic fonts and continue processing
+                            console.print(
+                                f"  [bold yellow]⚠️[/bold yellow] [yellow]{font_info['file']}[/yellow]: {error_msg} (skipping)"
+                            )
+                        else:
+                            # Stop processing when problematic fonts are encountered
+                            console.print(
+                                f"  [bold red]❌[/bold red] [red]{font_info['file']}[/red]: {error_msg}"
+                            )
+                            console.print(
+                                "[bold red]❌[/bold red] Stopping processing due to problematic font"
+                            )
+                            raise RuntimeError(
+                                f"Problematic font encountered: {font_info['file']} - {error_msg}"
+                            )
 
                 except Exception as e:
                     font_name = os.path.basename(font_path)
@@ -292,9 +317,21 @@ class StreamingFontProcessor:
                     log_font_processing(
                         self.logger, font_path, "FAILED", f"Unexpected error: {e}", e
                     )
-                    console.print(
-                        f"  [bold red]❌[/bold red] [red]{font_name}[/red]: Unexpected error: {e}"
-                    )
+
+                    if self.skip_problematic_fonts:
+                        # Skip problematic fonts and continue processing
+                        console.print(
+                            f"  [bold yellow]⚠️[/bold yellow] [yellow]{font_name}[/yellow]: Unexpected error: {e} (skipping)"
+                        )
+                    else:
+                        # Stop processing when problematic fonts are encountered
+                        console.print(
+                            f"  [bold red]❌[/bold red] [red]{font_name}[/red]: Unexpected error: {e}"
+                        )
+                        console.print(
+                            "[bold red]❌[/bold red] Stopping processing due to problematic font"
+                        )
+                        raise
 
                 progress.advance(task)
                 memory_monitor.update_peak()
@@ -314,6 +351,7 @@ def process_fonts_with_streaming(
     root_directory: str = None,
     font_paths: List[str] = None,
     base_batch_size: int = DEFAULT_BATCH_SIZE,
+    skip_problematic_fonts: bool = None,
 ) -> Generator[Dict[str, Any], None, None]:
     """
     High-level function to process fonts using streaming architecture.
@@ -322,11 +360,19 @@ def process_fonts_with_streaming(
         root_directory: Directory containing fonts (if font_paths not provided)
         font_paths: List of font file paths to process (if provided, overrides root_directory)
         base_batch_size: Base batch size for processing
+        skip_problematic_fonts: Override config setting for skipping problematic fonts
 
     Yields:
         Processed font information dictionaries
     """
     logger = get_logger("fontsampler.streaming_processor")
+
+    # Use provided setting or fall back to config default
+    should_skip_problematic = (
+        skip_problematic_fonts
+        if skip_problematic_fonts is not None
+        else PDF_SKIP_PROBLEMATIC_FONTS
+    )
 
     # Determine font paths
     if font_paths is not None:
@@ -374,7 +420,9 @@ def process_fonts_with_streaming(
     )
 
     # Create streaming processor
-    processor = StreamingFontProcessor(base_batch_size=base_batch_size)
+    processor = StreamingFontProcessor(
+        base_batch_size=base_batch_size, skip_problematic_fonts=should_skip_problematic
+    )
 
     # Process fonts using generator
     font_generator = (path for path in paths)
