@@ -1,0 +1,76 @@
+/* Font face declarations */
+{% for font in fonts %}
+    {% if font._registered_name %}
+        @font-face {
+        font-family: "{{ font._registered_name }}";
+        src: url("file://{{ font.path }}") format("{{ 'truetype' if font.path.lower().endswith('.ttf') else 'opentype' }}");
+        font-display: block;
+        }
+    {% endif %}
+{% endfor %}
+/* Page settings */
+@page {
+size: {{ page_size | default("A4") }};
+margin: {{ page_margin | default("20mm") }};
+}
+/* Base styles */
+body {
+font-family: Arial, sans-serif;
+margin: 0;
+padding: 0;
+font-size: {{ body_font_size | default("12px") }};
+line-height: {{ body_line_height | default("1.4") }};
+}
+/* Table of Contents */
+.toc-page {
+page-break-after: always;
+}
+.toc-page h1 {
+font-size: {{ toc_title_size | default("18px") }};
+font-weight: bold;
+margin-bottom: 30px;
+}
+.toc-entries {
+line-height: {{ toc_line_height | default("1.2") }};
+}
+.toc-entry {
+margin-bottom: 5px;
+}
+.toc-entry a {
+text-decoration: none;
+color: {{ toc_link_color | default("#0066cc") }};
+}
+.toc-entry a::after {
+content: leader('.') target-counter(attr(href), page);
+}
+/* Font pages */
+.font-page {
+page-break-after: always;
+margin-bottom: 30px;
+}
+.font-header {
+font-size: {{ font_header_size | default("24px") }};
+margin-bottom: 10px;
+color: {{ font_header_color | default("#444") }};
+}
+.font-metadata {
+padding: 10px 0;
+margin: 10px 0 20px 0;
+border-top: 1px solid {{ metadata_border_color | default("#444") }};
+border-bottom: 1px solid {{ metadata_border_color | default("#444") }};
+line-height: {{ metadata_line_height | default("1.4") }};
+}
+.font-metadata p {
+margin: 5px 0;
+}
+.font-samples {
+margin-bottom: 20px;
+}
+.sample-text {
+margin: 10px 0;
+line-height: {{ sample_text_line_height | default("1.2") }};
+}
+.font-paragraph {
+line-height: {{ paragraph_line_height | default("1.4") }};
+text-align: left;
+}

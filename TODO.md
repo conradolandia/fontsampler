@@ -2,9 +2,9 @@
 
 ## Configuration and Architecture
 
-- [ ] Extract configuration to YAML file for better maintainability
-- [ ] Externalize HTML/CSS templates to separate files
-- [ ] Implement personalized content for testing scenarios
+- [x] Extract configuration to YAML file for better maintainability
+- [x] Externalize HTML/CSS templates to separate files
+- [x] Implement personalized content for testing scenarios
 
 ## Font Processing and Validation
 

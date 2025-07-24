@@ -22,10 +22,12 @@ def create_argument_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  fontsampler /usr/share/fonts          # Sample all fonts in system directory
-  fontsampler ~/fonts -o my_samples.pdf # Custom output filename
-  fontsampler . -l 10                   # Limit to first 10 fonts (for testing)
-  fontsampler . --help                  # Show this help message
+  fontsampler /usr/share/fonts                    # Sample all fonts in system directory
+  fontsampler ~/fonts -o my_samples.pdf           # Custom output filename
+  fontsampler . -l 10                             # Limit to first 10 fonts (for testing)
+  fontsampler . -s typography                     # Use typography testing scenario
+  fontsampler . -s international -l 5             # Use international scenario with 5 fonts
+  fontsampler . --help                            # Show this help message
         """,
     )
 
@@ -54,6 +56,14 @@ Examples:
         help="Limit the number of fonts to process (useful for testing)",
     )
 
+    parser.add_argument(
+        "-s",
+        "--scenario",
+        choices=["default", "typography", "international"],
+        default="default",
+        help="Testing scenario for sample text (default: default)",
+    )
+
     return parser
 
 
@@ -77,6 +87,12 @@ def validate_arguments(args):
 def process_fonts_streaming(args):
     """Process fonts using streaming architecture."""
     try:
+        # Show scenario information
+        if args.scenario != "default":
+            console.print(
+                f"[bold blue]📝[/bold blue] Using [cyan]{args.scenario}[/cyan] testing scenario"
+            )
+
         # Apply limit if specified (for testing)
         if args.limit:
             console.print(
@@ -92,11 +108,11 @@ def process_fonts_streaming(args):
 
             # Process limited font paths
             font_generator = process_fonts_with_streaming(font_paths=limited_paths)
-            generate_pdf_incremental(font_generator, args.output)
+            generate_pdf_incremental(font_generator, args.output, args.scenario)
         else:
             # Process all fonts
             font_generator = process_fonts_with_streaming(args.directory)
-            generate_pdf_incremental(font_generator, args.output)
+            generate_pdf_incremental(font_generator, args.output, args.scenario)
 
         # Display any remaining warnings at the end
         display_captured_warnings()

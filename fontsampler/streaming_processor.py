@@ -113,6 +113,7 @@ class StreamingFontProcessor:
         self.valid_fonts = []
         self.rejected_fonts = []
         self.validation_errors = {}
+        self.metadata_warnings = []
         self.logger = get_logger("fontsampler.streaming_processor")
 
     def process_fonts_streaming(
@@ -257,6 +258,11 @@ class StreamingFontProcessor:
                         font_info["_registered_name"] = font_family
                         self.valid_fonts.append(font_info)
                         self.processed_count += 1
+
+                        # Track metadata warnings if present
+                        if font_info.get("metadata_error"):
+                            self.metadata_warnings.append(font_info["file"])
+
                         log_font_processing(
                             self.logger,
                             font_path,
@@ -299,6 +305,7 @@ class StreamingFontProcessor:
             "processed_count": self.processed_count,
             "valid_fonts": len(self.valid_fonts),
             "rejected_fonts": len(self.rejected_fonts),
+            "metadata_warnings": len(self.metadata_warnings),
             "validation_errors": self.validation_errors.copy(),
         }
 
@@ -385,6 +392,10 @@ def process_fonts_with_streaming(
     console.print(
         f"[bold yellow]⚠️[/bold yellow] Rejected fonts: [cyan]{stats['rejected_fonts']}[/cyan]"
     )
+    if stats["metadata_warnings"] > 0:
+        console.print(
+            f"[bold yellow]⚠️[/bold yellow] Fonts with metadata warnings: [cyan]{stats['metadata_warnings']}[/cyan]"
+        )
 
     # Log final memory usage
     final_memory = get_memory_usage()

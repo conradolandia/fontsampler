@@ -1,0 +1,103 @@
+# FontSampler Configuration File
+# This file contains all configurable settings for FontSampler
+
+# Sample text configuration
+sample_text:
+  # Main sample text (pangram) for font display
+  main: "Sphinx of black quartz, judge my vow!"
+
+  # Paragraph text with full character set
+  paragraph: |
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+    Integer nec odio. Praesent libero. Sed cursus ante dapibus diam.
+    Sed nisi. Nulla quis sem at nibh elementum imperdiet.
+    ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 1234567890 !@#$%^&*()_+-=[]{}|;:,.<>?`~
+
+  # Testing scenarios - predefined content for different use cases
+  testing_scenarios:
+    # Default scenario (current content)
+    default:
+      main: "Sphinx of black quartz, judge my vow!"
+      paragraph: |
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        Integer nec odio. Praesent libero. Sed cursus ante dapibus diam.
+        Sed nisi. Nulla quis sem at nibh elementum imperdiet.
+        ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 1234567890 !@#$%^&*()_+-=[]{}|;:,.<>?`~
+
+    # Typography testing scenario
+    typography:
+      main: "The quick brown fox jumps over the lazy dog"
+      paragraph: |
+        Typography is the art and technique of arranging type to make written language
+        legible, readable, and appealing when displayed. The arrangement of type involves
+        selecting typefaces, point sizes, line lengths, line-spacing, and letter-spacing.
+        ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 1234567890 !@#$%^&*()_+-=[]{}|;:,.<>?`~
+
+    # International testing scenario
+    international:
+      main: "El veloz murciélago hindú comía feliz cardillo y kiwi"
+      paragraph: |
+        This pangram contains all letters of the Spanish alphabet including ñ.
+        It's useful for testing fonts with international character support.
+        ABCDEFGHIJKLMNÑOPQRSTUVWXYZ abcdefghijklmnñopqrstuvwxyz 1234567890 !@#$%^&*()_+-=[]{}|;:,.<>?`~ áéíóúü
+
+# Output configuration
+output:
+  # Default output filename
+  default_filename: "font_samples.pdf"
+
+# Font processing configuration
+fonts:
+  # Supported font file extensions
+  extensions: [".ttf", ".otf"]
+
+  # Font sizes to display in samples (in points)
+  sample_sizes: [36, 24, 18, 14, 12]
+
+# Memory and performance settings
+memory:
+  # Batch processing settings
+  default_batch_size: 50
+  max_batch_size: 200
+  min_batch_size: 10
+
+  # Memory monitoring settings
+  memory_threshold: 0.7  # 70% memory usage threshold
+  estimated_memory_per_font: 5.0  # MB per font
+
+  # Update intervals
+  update_interval: 100  # Update peak memory every 100 fonts
+  processing_interval: 500  # Process fonts every 500 fonts
+
+# PDF generation settings
+pdf:
+  # Page settings
+  page_size: "A4"
+  page_margin: "20mm"
+
+  # Font display settings
+  font_header_size: "24px"
+  metadata_font_size: "12px"
+  sample_text_line_height: 1.2
+  paragraph_line_height: 1.4
+
+# Logging configuration
+logging:
+  # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  level: "INFO"
+
+  # Log file settings
+  file: null  # null for default location
+  max_age_days: 30  # Keep logs for 30 days
+  directory: "logs"  # Relative to current working directory
+
+# UI and display settings
+ui:
+  # Progress bar settings
+  show_progress: true
+  progress_update_interval: 100
+
+  # Console output settings
+  show_memory_usage: true
+  show_detailed_stats: true
+  color_output: true

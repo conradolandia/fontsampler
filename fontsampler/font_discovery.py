@@ -52,6 +52,7 @@ def extract_font_info(path):
         version = ""
         copyright = ""
         family = ""
+        metadata_error = None
 
         try:
             for record in font["name"].names:
@@ -64,9 +65,11 @@ def extract_font_info(path):
                 if record.nameID == 0 and not copyright:
                     copyright = record.toStr()
         except Exception as e:
+            error_msg = f"Error reading name table: {e}"
             console.print(
-                f"  [bold yellow]⚠️[/bold yellow] Error reading name table for [yellow]{os.path.basename(path)}[/yellow]: {e}"
+                f"  [bold yellow]⚠️[/bold yellow] {error_msg} for [yellow]{os.path.basename(path)}[/yellow]"
             )
+            metadata_error = error_msg
             # Continue with empty values rather than failing completely
 
         return {
@@ -76,6 +79,7 @@ def extract_font_info(path):
             "name": name,
             "version": version,
             "copyright": copyright,
+            "metadata_error": metadata_error,
         }
     except Exception as e:
         console.print(

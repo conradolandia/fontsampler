@@ -1,97 +1,133 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0", "wheel"]
 
 [project]
-name = "fontsampler"
-version = "0.1.0"
-description = "Generate PDF font catalog of fonts found in a directory"
 authors = [{name = "conradolandia", email = "andresconrado@gmail.com"}]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+  "Topic :: Text Processing :: Fonts",
+  "Topic :: Utilities",
+]
+dependencies = [
+  "fonttools>=4.59.0",
+  "weasyprint>=62.0",
+  "rich>=13.0",
+  "psutil>=5.9.0",
+  "pyyaml>=6.0",
+  "jinja2>=3.0",
+  "cairocffi>=1.6.0",
+  "pycairo>=1.28.0",
+  "pygobject>=3.48.0",
+]
+description = "Generate PDF font catalog of fonts found in a directory"
+keywords = ["fonts", "pdf", "catalog", "typography", "font-sampling", "weasyprint"]
 license = "MIT"
+name = "fontsampler"
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = [
-    "fonttools>=4.59.0",
-    "weasyprint>=62.0",
-    "rich>=13.0",
-    "psutil>=5.9.0",
-]
+urls = {Homepage = "https://github.com/conradolandia/fontsampler"}
+version = "0.1.0"
 
 [project.scripts]
 fontsampler = "fontsampler.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.11.0",
+  "pre-commit>=4.1.0",
+  "pyinstaller>=6.8.0",
+  "djlint>=1.36.4",
+]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 
 [tool.pixi.dependencies]
-fonttools = ">=4.59.0,<5"
-pycairo = ">=1.28.0,<2"
-pyinstaller = ">=6.8.0,<7"
-weasyprint = ">=62.0,<63"
-pygobject = ">=3.48.0,<4"
 cairocffi = ">=1.6.0,<2"
-rich = ">=13.0,<14"
-ruff = ">=0.11.0,<1"
+djlint = ">=1.36.4,<2"
+fonttools = ">=4.59.0,<5"
+jinja2 = ">=3.0,<4"
 pre-commit = ">=4.1.0,<5"
 psutil = ">=5.9.0,<6"
+pycairo = ">=1.28.0,<2"
+pygobject = ">=3.48.0,<4"
+pyinstaller = ">=6.8.0,<7"
+pyyaml = ">=6.0,<7"
+rich = ">=13.0,<14"
+ruff = ">=0.11.0,<1"
+weasyprint = ">=62.0,<63"
 
 [tool.pixi.pypi-dependencies]
-fontsampler = { path = ".", editable = true }
+fontsampler = {path = ".", editable = true}
 
 [tool.pixi.tasks]
 build = "pyinstaller fontsampler.spec"
 build-clean = "pyinstaller --noconfirm --clean fontsampler.spec"
 build-debug = "pyinstaller --debug all fontsampler.spec"
+check-binary = "test -f dist/fontsampler && echo 'Binary found' || echo 'No binary found'"
 clean = "rm -rf dist/ build/"
 clean-all = "rm -rf dist/ build/ .pyinstaller/"
-check-binary = "test -f dist/fontsampler && echo 'Binary found' || echo 'No binary found'"
 copy-binary = "bash -c 'echo \"Copying binary to $HOME/.local/bin/fontsampler\"; cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"
-install-interactive = {cmd = "bash -c 'echo \"No binary found. Choose build type:\"; echo \"1) Standard build (pixi run build)\"; echo \"2) Clean build (pixi run build-clean)\"; echo \"3) Cancel\"; read -p \"Enter choice (1-3): \" choice; case $choice in 1) pixi run build;; 2) pixi run build-clean;; 3) echo \"Installation cancelled\"; exit 0;; *) echo \"Invalid choice\"; exit 1;; esac'"}
+format = "ruff format ."
+format-fix = "ruff format --fix ."
 install = {cmd = "bash -c 'if [ -f dist/fontsampler ]; then echo \"Binary found, installing...\"; pixi run copy-binary; else pixi run install-interactive && pixi run copy-binary; fi'"}
+install-interactive = {cmd = "bash -c 'echo \"No binary found. Choose build type:\"; echo \"1) Standard build (pixi run build)\"; echo \"2) Clean build (pixi run build-clean)\"; echo \"3) Cancel\"; read -p \"Enter choice (1-3): \" choice; case $choice in 1) pixi run build;; 2) pixi run build-clean;; 3) echo \"Installation cancelled\"; exit 0;; *) echo \"Invalid choice\"; exit 1;; esac'"}
+lint = "ruff check ."
+lint-fix = "ruff check --fix ."
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
 exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".git-rewrite",
-    ".hg",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".pytype",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    "__pypackages__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "venv",
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".git-rewrite",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".pytype",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
 ]
 
 # Same as Black.
-line-length = 88
 indent-width = 4
+line-length = 88
 
 # Assume Python 3.8
 target-version = "py38"
 
 [tool.ruff.lint]
 # Enable pycodestyle (`E`), Pyflakes (`F`), and isort (`I`) codes
-select = ["E", "F", "B", "I", "W", "C4", "UP"]
 ignore = [
-    "E501",  # Line too long (handled by formatter)
-    "B008",  # Do not perform function calls in argument defaults
-    "C901",  # Function is too complex
-    "W293",  # Blank line contains whitespace (needed for HTML templates)
+  "E501", # Line too long (handled by formatter)
+  "B008", # Do not perform function calls in argument defaults
+  "C901", # Function is too complex
+  "W293", # Blank line contains whitespace (needed for HTML templates)
 ]
+select = ["E", "F", "B", "I", "W", "C4", "UP"]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -114,5 +150,11 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.setuptools.packages.find]
-include = ["fontsampler*"]
 exclude = ["logs*", "tests*", "docs*"]
+include = ["fontsampler*"]
+
+[tool.setuptools.package-data]
+fontsampler = ["templates/*", "config.yaml"]
+
+[tool.setuptools.dynamic]
+version = {attr = "fontsampler.__version__"}
