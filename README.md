@@ -177,7 +177,7 @@ fontsampler/
 │   ├── warning_capture.py  # Warning capture and display
 │   ├── font_discovery.py   # Font finding and metadata
 │   ├── font_validation.py  # Font validation and registration
-│   ├── pdf_generation.py   # HTML/CSS generation and PDF creation
+│   ├── template_manager.py # Jinja template management
 │   ├── incremental_pdf.py  # Incremental PDF generation
 │   ├── streaming_processor.py # Streaming font processing
 │   ├── memory_utils.py     # Memory management utilities

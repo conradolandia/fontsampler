@@ -66,7 +66,6 @@ a = Analysis(
         'fontsampler.warning_capture',
         'fontsampler.font_discovery',
         'fontsampler.font_validation',
-        'fontsampler.pdf_generation',
         'fontsampler.cli',
         'fontsampler.template_manager',
         'fontsampler.incremental_pdf',

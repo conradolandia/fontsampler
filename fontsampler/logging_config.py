@@ -98,7 +98,7 @@ def setup_logging(
                 "level": log_level.upper(),
                 "propagate": False,
             },
-            "fontsampler.pdf_generation": {
+            "fontsampler.incremental_pdf": {
                 "handlers": ["console", "file"],
                 "level": log_level.upper(),
                 "propagate": False,
@@ -140,7 +140,7 @@ def get_logger(name: str = None) -> logging.Logger:
     Get a logger instance.
 
     Args:
-        name: Logger name (e.g., 'fontsampler.pdf_generation')
+        name: Logger name (e.g., 'fontsampler.incremental_pdf')
 
     Returns:
         Logger instance

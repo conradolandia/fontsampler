@@ -93,7 +93,7 @@ def generate_pdf_incremental(
         scenario: Testing scenario name (default, typography, international)
         font_subsetting: Font subsetting behavior (auto, enabled, disabled). If None, uses config default.
     """
-    logger = get_logger("fontsampler.pdf_generation")
+    logger = get_logger("fontsampler.incremental_pdf")
 
     # Use provided font_subsetting or fall back to config default
     subsetting_mode = (
