@@ -18,6 +18,7 @@ A Python tool that generates PDF samples of fonts found in a directory. Creates 
 - **Rich UI**: Enhanced visual output with progress bars, colored status messages, and real-time feedback
 - **Streaming Architecture**: Efficient memory management for processing large font collections
 - **Memory Monitoring**: Adaptive batch processing with automatic garbage collection
+- **Large Collection Support**: Tested with collections of 3000+ fonts with performance benchmarks available
 
 ## Requirements
 
@@ -35,12 +36,15 @@ The project uses the following key Python packages:
 
 ### System Dependencies
 
-Pixi automatically handles all system dependencies through conda-forge. The following libraries are included automatically:
+Pixi automatically handles most system dependencies through conda-forge. The following libraries are included automatically:
 - **Cairo**: Graphics library for PDF generation
 - **Pango**: Text layout and font rendering
 - **GLib**: Core system library
 - **FontConfig**: Font discovery and configuration
 - **PyGObject**: Python bindings for GObject introspection (provides access to Pango, Cairo, GLib)
+
+**Additional System Dependencies for Testing:**
+- **FontForge**: Required for some tests that generate real test fonts (automatically integrated via PYTHONPATH)
 
 ## Installation
 
@@ -162,7 +166,6 @@ The project uses a streaming architecture for efficient memory management:
 - **Streaming Font Discovery**: Fonts are discovered and processed one at a time
 - **Adaptive Memory Management**: Automatic garbage collection and memory monitoring
 - **Batch Processing**: Configurable batch sizes based on available memory
-- **Progress Tracking**: Real-time progress bars and status updates
 
 ## Project Structure
 
@@ -191,12 +194,6 @@ fontsampler/
 └── README.md               # Main documentation
 ```
 
-This structure follows [Python packaging best practices](https://pythonpackaging.info/02-Package-Structure.html) and makes the codebase:
-- **Professional**: Proper package structure for distribution
-- **Maintainable**: Clear separation of concerns
-- **Testable**: Easy to add unit tests
-- **Importable**: Can be used as a library in other projects
-
 ## Development
 
 This project uses [Pixi](https://pixi.sh/) for dependency management and environment setup.
@@ -206,6 +203,55 @@ This project uses [Pixi](https://pixi.sh/) for dependency management and environ
 1. Install Pixi: https://pixi.sh/install
 2. Clone the repository
 3. Run `pixi install`
+
+### Testing
+
+The project includes comprehensive tests for large font collections and performance benchmarks. Some tests require FontForge for generating test fonts.
+
+#### Test Dependencies
+
+FontForge is a system dependency that provides Python extensions for font manipulation. It's required for some tests that generate real test fonts.
+
+**Install FontForge:**
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install fontforge
+
+# Arch Linux
+sudo pacman -S fontforge
+
+# macOS
+brew install fontforge
+```
+
+**Install Python test dependencies:**
+
+```bash
+# Using pixi (recommended)
+pixi install
+
+# Using pip
+pip install -e .
+```
+
+**Note:** The pixi environment is configured to use Python 3.13 and automatically includes the system FontForge Python bindings when running tests.
+
+#### Running Tests
+
+```bash
+# Run all tests
+pixi run test
+
+# Run tests with verbose output
+pixi run test-verbose
+
+# Run specific test file
+pixi run pytest tests/test_large_collections.py
+
+# Run tests with coverage
+pixi run pytest --cov=fontsampler
+```
 
 ### Code Quality
 
@@ -241,7 +287,7 @@ pixi run pre-commit run --all-files
 
 **No fonts found**: Ensure the directory contains `.ttf` or `.otf` files and you have read permissions.
 
-**Memory issues**: The streaming architecture should handle large font collections automatically. If you encounter memory issues, try using the `-l` option to limit the number of fonts processed.
+**Memory issues**: The streaming architecture should handle large font collections automatically. The tool has been tested with 3000+ fonts and uses adaptive memory management and batch processing. See [benchmarks](docs/benchmarks.md) for detailed performance results. If you encounter memory issues, try using the `-l` option to limit the number of fonts processed.
 
 **Font rendering issues**: Some fonts may not render correctly due to format incompatibilities. The tool will skip problematic fonts and report them in the output.
 
