@@ -62,10 +62,17 @@ Pixi automatically handles most system dependencies through conda-forge. The fol
 
 ### Command Line
 
-The main entry point is the `fontsampler` command:
+The tool can be executed in multiple ways:
 
 ```bash
+# Method 1: Direct command (recommended)
 pixi run fontsampler <directory_path> [options]
+
+# Method 2: As a Python module
+pixi run python -m fontsampler <directory_path> [options]
+
+# Method 3: Direct script execution
+pixi run python main.py <directory_path> [options]
 ```
 
 ### Examples
@@ -73,21 +80,29 @@ pixi run fontsampler <directory_path> [options]
 Basic usage:
 ```bash
 pixi run fontsampler /usr/share/fonts
+# or
+pixi run python -m fontsampler /usr/share/fonts
 ```
 
 Custom output filename:
 ```bash
 pixi run fontsampler ~/fonts -o my_samples.pdf
+# or
+pixi run python -m fontsampler ~/fonts -o my_samples.pdf
 ```
 
 Limit fonts for testing:
 ```bash
 pixi run fontsampler . -l 10
+# or
+pixi run python -m fontsampler . -l 10
 ```
 
 Verbose output:
 ```bash
 pixi run fontsampler /usr/share/fonts -v
+# or
+pixi run python -m fontsampler /usr/share/fonts -v
 ```
 
 ### Command Line Options
@@ -159,6 +174,13 @@ This version uses WeasyPrint with Cairo and Pango for font rendering, providing:
 - **Font feature support**: Automatic detection of bold, italic, and other variants
 - **PDF generation**: High-quality PDF output using Cairo graphics library
 
+## Configuration
+
+The tool uses a `config.yaml` file for customization:
+- **Sample Text**: Configurable text scenarios for font testing (default, typography, international)
+- **Output Settings**: PDF generation parameters and formatting options
+- **Memory Management**: Batch processing and memory threshold settings
+
 ## Architecture
 
 The project uses a streaming architecture for efficient memory management:
@@ -175,6 +197,7 @@ The project follows modern Python package structure best practices:
 fontsampler/
 ├── fontsampler/            # Main package directory
 │   ├── __init__.py         # Package initialization
+│   ├── __main__.py         # Module execution entry point
 │   ├── cli.py              # Command-line interface
 │   ├── config.py           # Configuration constants
 │   ├── warning_capture.py  # Warning capture and display
