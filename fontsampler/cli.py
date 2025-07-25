@@ -8,7 +8,7 @@ import sys
 
 from rich.panel import Panel
 
-from .config import DEFAULT_OUTPUT, LOG_LEVEL
+from .config import DEFAULT_OUTPUT, LOG_LEVEL, _config
 from .incremental_pdf import generate_pdf_incremental
 from .logging_config import cleanup_old_logs, setup_logging
 from .streaming_processor import find_fonts_streaming, process_fonts_with_streaming
@@ -174,13 +174,21 @@ def process_fonts_streaming(args):
 
 def main():
     """Main CLI entry point."""
-    # Display program header
-    console.print(
-        Panel.fit(
-            "[bold blue]FontSampler[/bold blue] - [cyan]Generate PDF font catalog[/cyan]",
-            border_style="blue",
+    # Display ASCII art header
+    header = _config.get_header()
+    if header:
+        console.print(
+            Panel.fit(header, border_style="dark_slate_gray1"), style="wheat1"
         )
-    )
+        console.print()  # Add a blank line after header
+    else:
+        # Fallback to Rich panel if no header in config
+        console.print(
+            Panel.fit(
+                "[yellow2]FontSampler[/yellow2] - [wheat1]Generate PDF font catalog[/wheat1]",
+                border_style="dark_slate_gray1",
+            )
+        )
 
     parser = create_argument_parser()
     args = parser.parse_args()

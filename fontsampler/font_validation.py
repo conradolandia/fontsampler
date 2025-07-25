@@ -10,7 +10,7 @@ from io import BytesIO, StringIO
 from weasyprint import HTML
 from weasyprint.text.fonts import FontConfiguration
 
-from .config import PDF_MIN_FONT_SIZE_BYTES
+from .config import _config
 from .warning_capture import capture_warnings_context, console
 
 
@@ -127,7 +127,7 @@ def register_font_for_weasyprint(font_path):
 
         # Check file size - very small files might be corrupted
         file_size = os.path.getsize(font_path)
-        if file_size < PDF_MIN_FONT_SIZE_BYTES:
+        if file_size < _config.get("pdf.min_font_size_bytes", 1024):
             log_font_validation_issue(
                 font_path,
                 "file_size",

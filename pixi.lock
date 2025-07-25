@@ -475,7 +475,7 @@ packages:
 - pypi: ./
   name: fontsampler
   version: 0.1.0
-  sha256: a5111b216e811b3d6bf49ac92047357bf45b92a515c80871e1467ae1570c5b85
+  sha256: 61ed9f57d835b0087b5f231403451403eb6b6fc68c1c91ef7e2e7947df70c1a2
   requires_dist:
   - fonttools>=4.59.0
   - weasyprint>=62.0

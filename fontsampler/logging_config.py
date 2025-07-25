@@ -10,15 +10,13 @@ from pathlib import Path
 
 from rich.console import Console
 
-from .config import LOG_DIR, LOG_FILE, LOG_LEVEL, LOG_MAX_AGE_DAYS
+from .config import LOG_LEVEL, _config
 
 # Initialize Rich console
 console = Console()
 
 
-def setup_logging(
-    log_level: str = LOG_LEVEL, log_file: str = LOG_FILE
-) -> logging.Logger:
+def setup_logging(log_level: str = LOG_LEVEL, log_file: str = None) -> logging.Logger:
     """
     Setup comprehensive logging configuration.
 
@@ -31,7 +29,7 @@ def setup_logging(
     """
     if log_file is None:
         # Use configured log directory
-        log_dir = LOG_DIR
+        log_dir = _config.get_log_directory()
         log_dir.mkdir(exist_ok=True)
 
         # Create log file with timestamp
@@ -306,14 +304,16 @@ def log_pdf_font_optimization_retry(
         logger.debug("Font optimization retry in progress")
 
 
-def cleanup_old_logs(max_age_days: int = LOG_MAX_AGE_DAYS):
+def cleanup_old_logs(max_age_days: int = None):
     """
     Clean up old log files.
 
     Args:
         max_age_days: Maximum age of log files to keep (days)
     """
-    log_dir = LOG_DIR
+    if max_age_days is None:
+        max_age_days = _config.get("logging.max_age_days", 30)
+    log_dir = _config.get_log_directory()
     if not log_dir.exists():
         return
 

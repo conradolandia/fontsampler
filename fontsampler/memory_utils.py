@@ -6,12 +6,7 @@ import gc
 
 import psutil
 
-from .config import (
-    DEFAULT_BATCH_SIZE,
-    ESTIMATED_MEMORY_PER_FONT,
-    MAX_BATCH_SIZE,
-    MIN_BATCH_SIZE,
-)
+from .config import DEFAULT_BATCH_SIZE, _config
 
 
 def get_memory_usage() -> float:
@@ -54,11 +49,17 @@ def adaptive_batch_size(
     if memory_usage_pct > memory_threshold:
         # Reduce batch size if memory usage is high
         reduction_factor = 1 - (memory_usage_pct - memory_threshold)
-        new_batch_size = max(MIN_BATCH_SIZE, int(base_batch_size * reduction_factor))
+        new_batch_size = max(
+            _config.get("memory.min_batch_size", 10),
+            int(base_batch_size * reduction_factor),
+        )
     else:
         # Increase batch size if memory usage is low
         increase_factor = 1 + (memory_threshold - memory_usage_pct)
-        new_batch_size = min(MAX_BATCH_SIZE, int(base_batch_size * increase_factor))
+        new_batch_size = min(
+            _config.get("memory.max_batch_size", 200),
+            int(base_batch_size * increase_factor),
+        )
 
     return new_batch_size
 
@@ -72,7 +73,7 @@ def force_garbage_collection():
 
 
 def check_memory_safety(
-    font_count: int, estimated_memory_per_font: float = ESTIMATED_MEMORY_PER_FONT
+    font_count: int, estimated_memory_per_font: float = None
 ) -> tuple[bool, str]:
     """
     Check if processing a given number of fonts is safe for memory.
@@ -84,6 +85,9 @@ def check_memory_safety(
     Returns:
         Tuple of (is_safe, warning_message)
     """
+    if estimated_memory_per_font is None:
+        estimated_memory_per_font = _config.get("memory.estimated_memory_per_font", 5.0)
+
     available_memory = get_available_memory()
     estimated_total_memory = font_count * estimated_memory_per_font
 

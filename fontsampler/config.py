@@ -242,6 +242,10 @@ class Config:
         scenarios = self.get("sample_text.testing_scenarios", {})
         return list(scenarios.keys())
 
+    def get_header(self) -> str:
+        """Get the ASCII art header."""
+        return self.get("header", "")
+
 
 # Global configuration instance
 _config = Config()

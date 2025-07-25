@@ -14,12 +14,7 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from .config import (
-    DEFAULT_BATCH_SIZE,
-    FONT_EXTENSIONS,
-    MEMORY_THRESHOLD,
-    PDF_SKIP_PROBLEMATIC_FONTS,
-)
+from .config import DEFAULT_BATCH_SIZE, FONT_EXTENSIONS, _config
 from .font_discovery import extract_font_info
 from .font_validation import register_font_for_weasyprint, validate_font_with_weasyprint
 from .logging_config import get_logger, log_font_processing, log_memory_usage
@@ -110,15 +105,19 @@ class StreamingFontProcessor:
     def __init__(
         self,
         base_batch_size: int = DEFAULT_BATCH_SIZE,
-        memory_threshold: float = MEMORY_THRESHOLD,
+        memory_threshold: float = None,
         skip_problematic_fonts: bool = None,
     ):
         self.base_batch_size = base_batch_size
-        self.memory_threshold = memory_threshold
+        self.memory_threshold = (
+            memory_threshold
+            if memory_threshold is not None
+            else _config.get_memory_threshold()
+        )
         self.skip_problematic_fonts = (
             skip_problematic_fonts
             if skip_problematic_fonts is not None
-            else PDF_SKIP_PROBLEMATIC_FONTS
+            else _config.get("pdf.skip_problematic_fonts", True)
         )
         self.processed_count = 0
         self.valid_fonts = []
@@ -371,7 +370,7 @@ def process_fonts_with_streaming(
     should_skip_problematic = (
         skip_problematic_fonts
         if skip_problematic_fonts is not None
-        else PDF_SKIP_PROBLEMATIC_FONTS
+        else _config.get("pdf.skip_problematic_fonts", True)
     )
 
     # Determine font paths

@@ -9,13 +9,7 @@ from typing import Any, Dict, Generator
 from weasyprint import CSS, HTML
 from weasyprint.text.fonts import FontConfiguration
 
-from .config import (
-    PDF_FONT_SUBSETTING,
-    PDF_RETRY_WITHOUT_SUBSETTING,
-    PROCESSING_INTERVAL,
-    SAMPLE_SIZES,
-    UPDATE_INTERVAL,
-)
+from .config import SAMPLE_SIZES, _config
 from .logging_config import (
     get_logger,
     log_memory_usage,
@@ -97,7 +91,9 @@ def generate_pdf_incremental(
 
     # Use provided font_subsetting or fall back to config default
     subsetting_mode = (
-        font_subsetting if font_subsetting is not None else PDF_FONT_SUBSETTING
+        font_subsetting
+        if font_subsetting is not None
+        else _config.get("pdf.font_subsetting", "auto")
     )
 
     with MemoryMonitor("PDF Generation") as memory_monitor:
@@ -111,10 +107,10 @@ def generate_pdf_incremental(
             fonts.append(font_info)
             font_count += 1
 
-            if font_count % UPDATE_INTERVAL == 0:
+            if font_count % _config.get("memory.update_interval", 100) == 0:
                 memory_monitor.update_peak()
 
-            if font_count % PROCESSING_INTERVAL == 0:
+            if font_count % _config.get("memory.processing_interval", 500) == 0:
                 console.print(f"[blue]📊[/blue] Processed {font_count} fonts...")
 
         console.print(f"[blue]📊[/blue] Total fonts collected: {font_count}")
@@ -138,8 +134,6 @@ def generate_pdf_incremental(
             template_manager = TemplateManager()
 
             # Get scenario content
-            from .config import _config
-
             scenario_content = _config.get_testing_scenario(scenario)
 
             # Render HTML and CSS using templates
@@ -191,7 +185,7 @@ def generate_pdf_incremental(
                         )
                     except Exception as e:
                         error_msg = str(e)
-                        if PDF_RETRY_WITHOUT_SUBSETTING and (
+                        if _config.get("pdf.retry_without_subsetting", True) and (
                             "unpack requires a buffer" in error_msg
                             or "font" in error_msg.lower()
                         ):
