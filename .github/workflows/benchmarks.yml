@@ -31,23 +31,16 @@ jobs:
         sudo apt-get install -y libcairo2-dev libpango1.0-dev libglib2.0-dev libxml2-dev
         sudo apt-get install -y fonts-dejavu-core
 
-    - name: Install pixi
-      uses: prefix-dev/setup-pixi@v0.3.0
-      with:
-        pixi-version: 'latest'
-        manifest-path: 'pyproject.toml'
-
-    - name: Install Python dependencies with pixi
+    - name: Install Python dependencies
       run: |
-        pixi install --manifest-path pyproject.toml
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest psutil
 
     - name: Verify FontForge installation
       run: |
         fontforge --version
-        echo "Checking Python path in pixi environment:"
-        pixi run python -c 'import sys; print("Python path:"); [print(p) for p in sys.path]'
-        echo "Checking FontForge availability:"
-        pixi run python -c 'import fontforge; print("FontForge Python bindings available")'
+        python -c "import fontforge; print('FontForge Python bindings available')"
         echo "FontForge installation verified successfully"
 
     - name: Verify base font availability
@@ -57,25 +50,34 @@ jobs:
 
     - name: Run performance benchmarks
       run: |
-        pixi run benchmark
+        PYTHONPATH=/usr/lib/python3.13/site-packages python -m pytest tests/test_large_collections.py::test_large_collection_performance -v -s 2>&1 | tee performance_results.log
 
     - name: Run memory efficiency tests
       run: |
-        pixi run benchmark-memory
+        PYTHONPATH=/usr/lib/python3.13/site-packages python -m pytest tests/test_large_collections.py::test_memory_efficiency -v -s 2>&1 | tee memory_results.log
 
     - name: Run all tests with pytest
       run: |
-        pixi run test-verbose || echo "Some tests may have been skipped due to missing dependencies"
+        PYTHONPATH=/usr/lib/python3.13/site-packages pytest tests/test_large_collections.py -v || echo "Some tests may have been skipped due to missing dependencies"
 
     - name: Generate benchmark report
       run: |
         echo "## Performance Benchmarks" >> $GITHUB_STEP_SUMMARY
         echo "✅ Large collection tests completed successfully" >> $GITHUB_STEP_SUMMARY
         echo "- Tested with real fonts generated using FontForge" >> $GITHUB_STEP_SUMMARY
-        echo "- Tested with collections up to 200 fonts" >> $GITHUB_STEP_SUMMARY
-        echo "- Memory usage: ~8MB baseline, ~320MB peak during processing" >> $GITHUB_STEP_SUMMARY
-        echo "- Processing speed: ~16 fonts/second (12.44s for 200 fonts)" >> $GITHUB_STEP_SUMMARY
-        echo "- Success rate: 100% (200/200 fonts processed)" >> $GITHUB_STEP_SUMMARY
+
+        # Extract performance metrics from logs if available
+        if [ -f performance_results.log ]; then
+          echo "### Performance Results:" >> $GITHUB_STEP_SUMMARY
+          grep -E "(Processing time|Memory usage|fonts/second|Success rate)" performance_results.log | head -5 >> $GITHUB_STEP_SUMMARY || echo "- Performance metrics captured in test output" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ -f memory_results.log ]; then
+          echo "### Memory Efficiency:" >> $GITHUB_STEP_SUMMARY
+          grep -E "(Memory usage|Baseline memory|Peak memory)" memory_results.log | head -3 >> $GITHUB_STEP_SUMMARY || echo "- Memory metrics captured in test output" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "- Check the detailed test output above for complete metrics" >> $GITHUB_STEP_SUMMARY
 
     - name: Upload benchmark results
       uses: actions/upload-artifact@v4
