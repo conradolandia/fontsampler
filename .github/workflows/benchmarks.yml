@@ -35,6 +35,7 @@ jobs:
       uses: prefix-dev/setup-pixi@v0.3.0
       with:
         pixi-version: 'latest'
+        install-dependencies: false
 
     - name: Install Python dependencies with pixi
       run: |
