@@ -44,7 +44,10 @@ jobs:
     - name: Verify FontForge installation
       run: |
         fontforge --version
-        PYTHONPATH=/usr/lib/python3.13/site-packages pixi run python -c 'import fontforge; print("FontForge Python bindings available")'
+        echo "Checking Python path in pixi environment:"
+        pixi run python -c "import sys; print('Python path:'); [print(p) for p in sys.path]"
+        echo "Checking FontForge availability:"
+        pixi run python -c "import fontforge; print('FontForge Python bindings available')"
         echo "FontForge installation verified successfully"
 
     - name: Verify base font availability
