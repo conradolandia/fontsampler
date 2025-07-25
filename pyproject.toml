@@ -77,7 +77,6 @@ fontsampler = {path = ".", editable = true}
 build = "pyinstaller fontsampler.spec"
 build-clean = "pyinstaller --noconfirm --clean fontsampler.spec"
 build-debug = "pyinstaller --debug all fontsampler.spec"
-check-binary = "test -f dist/fontsampler && echo 'Binary found' || echo 'No binary found'"
 clean = "rm -rf dist/ build/"
 clean-all = "rm -rf dist/ build/ .pyinstaller/"
 copy-binary = "bash -c 'echo \"Copying binary to $HOME/.local/bin/fontsampler\"; cp -fv dist/fontsampler $HOME/.local/bin/fontsampler'"

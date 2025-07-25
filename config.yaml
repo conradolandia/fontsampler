@@ -1,6 +1,15 @@
 # FontSampler Configuration File
 # This file contains all configurable settings for FontSampler
 
+# Terminal Header
+header: |
+  ███████  ██████  ███    ██ ████████ ███████  █████  ███    ███ ██████  ██      ███████ ██████
+  ██      ██    ██ ████   ██    ██    ██      ██   ██ ████  ████ ██   ██ ██      ██      ██   ██
+  █████   ██    ██ ██ ██  ██    ██    ███████ ███████ ██ ████ ██ ██████  ██      █████   ██████
+  ██      ██    ██ ██  ██ ██    ██         ██ ██   ██ ██  ██  ██ ██      ██      ██      ██   ██
+  ██       ██████  ██   ████    ██    ███████ ██   ██ ██      ██ ██      ███████ ███████ ██   ██
+
+
 # Sample text configuration
 sample_text:
   # Main sample text (pangram) for font display
@@ -41,6 +50,7 @@ sample_text:
         It's useful for testing fonts with international character support.
         ABCDEFGHIJKLMNÑOPQRSTUVWXYZ abcdefghijklmnñopqrstuvwxyz 1234567890 !@#$%^&*()_+-=[]{}|;:,.<>?`~ áéíóúü
 
+
 # Output configuration
 output:
   # Default output filename
@@ -53,6 +63,7 @@ fonts:
 
   # Font sizes to display in samples (in points)
   sample_sizes: [36, 24, 18, 14, 12]
+
 
 # Memory and performance settings
 memory:
@@ -68,6 +79,7 @@ memory:
   # Update intervals
   update_interval: 100  # Update peak memory every 100 fonts
   processing_interval: 500  # Process fonts every 500 fonts
+
 
 # PDF generation settings
 pdf:
@@ -87,6 +99,7 @@ pdf:
   skip_problematic_fonts: true  # Skip fonts that cause validation errors
   min_font_size_bytes: 1024  # Minimum font file size in bytes (files smaller than this are considered corrupted)
 
+
 # Logging configuration
 logging:
   # Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -96,6 +109,7 @@ logging:
   file: null  # null for default location
   max_age_days: 30  # Keep logs for 30 days
   directory: "logs"  # Relative to current working directory
+
 
 # UI and display settings
 ui:

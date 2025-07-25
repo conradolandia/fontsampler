@@ -246,43 +246,15 @@ class Config:
 # Global configuration instance
 _config = Config()
 
-# Backward compatibility exports
+# Backward compatibility exports - only keeping actively used constants
 SAMPLE_TEXT = _config.get_sample_text()
 PARAGRAPH = _config.get_paragraph_text()
 DEFAULT_OUTPUT = _config.get_default_output()
 FONT_EXTENSIONS = _config.get_font_extensions()
 DEFAULT_BATCH_SIZE = _config.get_batch_size()
-MEMORY_THRESHOLD = _config.get_memory_threshold()
 LOG_LEVEL = _config.get_log_level()
-LOG_DIR = _config.get_log_directory()
-LOG_FILE = _config.get("logging.file")
-LOG_MAX_AGE_DAYS = _config.get("logging.max_age_days", 30)
-
-# Additional exports for new features
 SAMPLE_SIZES = _config.get_sample_sizes()
-MAX_BATCH_SIZE = _config.get("memory.max_batch_size", 200)
-MIN_BATCH_SIZE = _config.get("memory.min_batch_size", 10)
-UPDATE_INTERVAL = _config.get("memory.update_interval", 100)
-PROCESSING_INTERVAL = _config.get("memory.processing_interval", 500)
-ESTIMATED_MEMORY_PER_FONT = _config.get("memory.estimated_memory_per_font", 5.0)
 
-# PDF settings
-PDF_PAGE_SIZE = _config.get("pdf.page_size", "A4")
-PDF_PAGE_MARGIN = _config.get("pdf.page_margin", "20mm")
-PDF_FONT_HEADER_SIZE = _config.get("pdf.font_header_size", "24px")
-PDF_METADATA_FONT_SIZE = _config.get("pdf.metadata_font_size", "12px")
+# PDF settings - only keeping actively used constants
 PDF_SAMPLE_TEXT_LINE_HEIGHT = _config.get("pdf.sample_text_line_height", 1.2)
 PDF_PARAGRAPH_LINE_HEIGHT = _config.get("pdf.paragraph_line_height", 1.4)
-
-# PDF font processing settings
-PDF_FONT_SUBSETTING = _config.get("pdf.font_subsetting", "auto")
-PDF_RETRY_WITHOUT_SUBSETTING = _config.get("pdf.retry_without_subsetting", True)
-PDF_SKIP_PROBLEMATIC_FONTS = _config.get("pdf.skip_problematic_fonts", True)
-PDF_MIN_FONT_SIZE_BYTES = _config.get("pdf.min_font_size_bytes", 1024)
-
-# UI settings
-UI_SHOW_PROGRESS = _config.get("ui.show_progress", True)
-UI_PROGRESS_UPDATE_INTERVAL = _config.get("ui.progress_update_interval", 100)
-UI_SHOW_MEMORY_USAGE = _config.get("ui.show_memory_usage", True)
-UI_SHOW_DETAILED_STATS = _config.get("ui.show_detailed_stats", True)
-UI_COLOR_OUTPUT = _config.get("ui.color_output", True)
