@@ -38,7 +38,7 @@ jobs:
 
     - name: Install Python dependencies with pixi
       run: |
-        pixi install
+        pixi install --manifest-path pyproject.toml
 
     - name: Verify FontForge installation
       run: |
