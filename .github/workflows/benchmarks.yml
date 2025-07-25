@@ -29,7 +29,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y python3-fontforge
         sudo apt-get install -y libcairo2-dev libpango1.0-dev libglib2.0-dev libxml2-dev
-        sudo apt-get install -y libgirepository1.0-dev gobject-introspection
+        sudo apt-get install -y libgirepository1.0-dev gobject-introspection libgirepository1.0-1 gir1.2-glib-2.0
         sudo apt-get install -y fonts-dejavu-core
 
     - name: Install Python dependencies
@@ -43,6 +43,13 @@ jobs:
         python -c "import fontforge; print('FontForge Python bindings available')"
         python -c "print(f'FontForge version: {fontforge.version()}')"
         echo "FontForge installation verified successfully"
+
+    - name: Verify pkg-config dependencies
+      run: |
+        echo "Checking available pkg-config files:"
+        pkg-config --list-all | grep -i girepository || echo "No girepository found in pkg-config"
+        echo "Checking girepository-2.0 specifically:"
+        pkg-config --exists girepository-2.0 && echo "girepository-2.0 found" || echo "girepository-2.0 NOT found"
 
     - name: Verify base font availability
       run: |
