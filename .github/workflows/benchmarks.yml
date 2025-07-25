@@ -45,9 +45,9 @@ jobs:
       run: |
         fontforge --version
         echo "Checking Python path in pixi environment:"
-        pixi run python -c "import sys; print('Python path:'); [print(p) for p in sys.path]"
+        pixi run python -c 'import sys; print("Python path:"); [print(p) for p in sys.path]'
         echo "Checking FontForge availability:"
-        pixi run python -c "import fontforge; print('FontForge Python bindings available')"
+        pixi run python -c 'import fontforge; print("FontForge Python bindings available")'
         echo "FontForge installation verified successfully"
 
     - name: Verify base font availability
