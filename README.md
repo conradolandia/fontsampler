@@ -4,21 +4,21 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Pixi](https://img.shields.io/badge/Pixi-Enabled-green.svg)](https://pixi.sh/)
 
-A Python tool that generates PDF samples of fonts found in a directory. Creates a comprehensive font catalog with metadata, sample text at different sizes, and a table of contents using streaming architecture for efficient memory management.
+A Python tool that generates PDF samples of fonts found in a directory. Produces font catalogs with metadata, sample text at multiple sizes, and table of contents using streaming architecture for memory management.
 
 ## Features
 
-- **Font Discovery**: Automatically finds `.ttf` and `.otf` fonts in a directory
+- **Font Discovery**: Locates `.ttf` and `.otf` fonts in directories
 - **Font Metadata**: Extracts and displays font name, family, version, and copyright information
-- **Sample Text**: Shows fonts at multiple sizes (36, 24, 18, 14pt) with pangram text
-- **Character Set**: Displays full alphabet, numbers, and special characters
-- **Text Wrapping**: All text properly wraps to stay within page boundaries
-- **Table of Contents**: Generated automatically with page numbers
-- **Font Support**: Uses WeasyPrint with Pango for TrueType, OpenType and PostScript font support
-- **Rich UI**: Enhanced visual output with progress bars, colored status messages, and real-time feedback
-- **Streaming Architecture**: Efficient memory management for processing large font collections
-- **Memory Monitoring**: Adaptive batch processing with automatic garbage collection
-- **Large Collection Support**: Tested with collections of 3000+ fonts with performance benchmarks available
+- **Sample Text**: Renders fonts at multiple sizes (36, 24, 18, 14pt) with configurable text
+- **Character Set**: Displays alphabet, numbers, and special characters
+- **Text Wrapping**: Handles text wrapping within page boundaries
+- **Table of Contents**: Generates table of contents with page references
+- **Font Support**: Uses WeasyPrint with Pango for TrueType, OpenType and PostScript fonts
+- **Terminal UI**: Progress bars, status messages, and process feedback
+- **Streaming Architecture**: Memory management for processing large font collections
+- **Memory Monitoring**: Adaptive batch processing with garbage collection
+- **Large Collection Support**: Tested with collections of 3000+ fonts
 
 ## Requirements
 
@@ -160,33 +160,34 @@ The generated PDF contains:
 
 ## Sample Text
 
-Default configuration includes the pangram "Sphinx of black quartz, judge my vow!" for font samples, plus a comprehensive character set including:
+Default configuration includes the pangram "Sphinx of black quartz, judge my vow!" for font samples, plus a character set including:
 - Uppercase and lowercase letters
 - Numbers 0-9
 - Special characters and symbols
 
 ## Font Support
 
-This version uses WeasyPrint with Cairo and Pango for font rendering, providing:
-- **OpenType support**: Direct handling of `.otf` files
-- **PostScript font support**: Handles CFF and CFF2 outlines
-- **TrueType support**: Full support for `.ttf` files
-- **Font feature support**: Automatic detection of bold, italic, and other variants
-- **PDF generation**: High-quality PDF output using Cairo graphics library
+Uses WeasyPrint with Cairo and Pango for font rendering:
+- **OpenType support**: Handles `.otf` files
+- **PostScript font support**: Processes CFF and CFF2 outlines
+- **TrueType support**: Supports `.ttf` files
+- **Font feature support**: Detects bold, italic, and other variants
+- **PDF generation**: PDF output using Cairo graphics library
 
 ## Configuration
 
 The tool uses a `config.yaml` file for customization:
-- **Sample Text**: Configurable text scenarios for font testing (default, typography, international)
+- **Header**: Application banner displayed at startup
+- **Sample Text**: Text scenarios for font testing (default, typography, international)
 - **Output Settings**: PDF generation parameters and formatting options
 - **Memory Management**: Batch processing and memory threshold settings
 
 ## Architecture
 
-The project uses a streaming architecture for efficient memory management:
+The project uses a streaming architecture for memory management:
 
-- **Streaming Font Discovery**: Fonts are discovered and processed one at a time
-- **Adaptive Memory Management**: Automatic garbage collection and memory monitoring
+- **Streaming Font Discovery**: Fonts are discovered and processed sequentially
+- **Adaptive Memory Management**: Garbage collection and memory monitoring
 - **Batch Processing**: Configurable batch sizes based on available memory
 
 ## Project Structure
@@ -229,7 +230,7 @@ This project uses [Pixi](https://pixi.sh/) for dependency management and environ
 
 ### Testing
 
-The project includes comprehensive tests for large font collections and performance benchmarks. Some tests require FontForge for generating test fonts.
+The project includes tests for large font collections and performance benchmarks. Some tests require FontForge for generating test fonts.
 
 #### Test Dependencies
 
@@ -310,7 +311,7 @@ pixi run pre-commit run --all-files
 
 **No fonts found**: Ensure the directory contains `.ttf` or `.otf` files and you have read permissions.
 
-**Memory issues**: The streaming architecture should handle large font collections automatically. The tool has been tested with 3000+ fonts and uses adaptive memory management and batch processing. See [benchmarks](docs/benchmarks.md) for detailed performance results. If you encounter memory issues, try using the `-l` option to limit the number of fonts processed.
+**Memory issues**: The streaming architecture handles large font collections. The tool has been tested with 3000+ fonts and uses adaptive memory management and batch processing. See [benchmarks](docs/benchmarks.md) for performance results. If you encounter memory issues, use the `-l` option to limit the number of fonts processed.
 
 **Font rendering issues**: Some fonts may not render correctly due to format incompatibilities. The tool will skip problematic fonts and report them in the output.
 
@@ -327,7 +328,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome. Submit a Pull Request for changes. For major changes, open an issue first to discuss the proposed modifications.
 
 ### Development Setup
 
