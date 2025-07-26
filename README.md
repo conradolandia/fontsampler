@@ -48,6 +48,16 @@ Pixi automatically handles most system dependencies through conda-forge. The fol
 
 ## Installation
 
+### Option 1: Download Pre-built Binary
+
+Download the latest binary from the [releases page](https://github.com/conradolandia/fontsampler/releases):
+
+1. Go to [FontSampler Releases](https://github.com/conradolandia/fontsampler/releases)
+2. Download the binary for your platform
+3. Make it executable and run directly
+
+### Option 2: Build from Source
+
 1. Clone or download this repository
 2. Install Pixi if you haven't already:
    ```bash
@@ -65,13 +75,16 @@ Pixi automatically handles most system dependencies through conda-forge. The fol
 The tool can be executed in multiple ways:
 
 ```bash
-# Method 1: Direct command (recommended)
+# Method 1: Pre-built binary (if downloaded from releases)
+./fontsampler <directory_path> [options]
+
+# Method 2: Direct command (if built from source)
 pixi run fontsampler <directory_path> [options]
 
-# Method 2: As a Python module
+# Method 3: As a Python module
 pixi run python -m fontsampler <directory_path> [options]
 
-# Method 3: Direct script execution
+# Method 4: Direct script execution
 pixi run python main.py <directory_path> [options]
 ```
 
@@ -79,6 +92,10 @@ pixi run python main.py <directory_path> [options]
 
 Basic usage:
 ```bash
+# Using pre-built binary
+./fontsampler /usr/share/fonts
+
+# Using source installation
 pixi run fontsampler /usr/share/fonts
 # or
 pixi run python -m fontsampler /usr/share/fonts
@@ -86,6 +103,10 @@ pixi run python -m fontsampler /usr/share/fonts
 
 Custom output filename:
 ```bash
+# Using pre-built binary
+./fontsampler ~/fonts -o my_samples.pdf
+
+# Using source installation
 pixi run fontsampler ~/fonts -o my_samples.pdf
 # or
 pixi run python -m fontsampler ~/fonts -o my_samples.pdf
@@ -93,6 +114,10 @@ pixi run python -m fontsampler ~/fonts -o my_samples.pdf
 
 Limit fonts for testing:
 ```bash
+# Using pre-built binary
+./fontsampler . -l 10
+
+# Using source installation
 pixi run fontsampler . -l 10
 # or
 pixi run python -m fontsampler . -l 10
@@ -100,6 +125,10 @@ pixi run python -m fontsampler . -l 10
 
 Verbose output:
 ```bash
+# Using pre-built binary
+./fontsampler /usr/share/fonts -v
+
+# Using source installation
 pixi run fontsampler /usr/share/fonts -v
 # or
 pixi run python -m fontsampler /usr/share/fonts -v
