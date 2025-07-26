@@ -345,5 +345,5 @@ If you use this tool in your research or projects, please cite it as:
 ```
 FontSampler: A Python tool for generating PDF font catalogs
 Version 0.1.0
-https://github.com/your-repo/fontsampler
+https://github.com/conradolandia/fontsampler
 ```
